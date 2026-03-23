@@ -17,7 +17,7 @@
 * **Animations:** Lottie Web
 
 ## 🚀 Live Demo
-Try the app directly in your browser: [Launch Nobile](https://lifely-finance.github.io/Nobile-app/)
+Try the app directly in your browser: [Launch Nobile](https://lifely-finance.github.io/Nobile/)
 
 ## 🤝 Open for Investment & Partnership
 This project is actively developed and preparing for scale. If you are interested in collaboration, investments, or acquiring the technology, feel free to reach out.
