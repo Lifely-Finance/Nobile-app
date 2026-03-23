@@ -5546,4 +5546,9 @@ async function openHabitTips(habitId) {
   }
 
   el.innerHTML = html;
+   function isPaymentPaid(payment) {
+    // Временная заглушка, чтобы приложение не вылетало
+    return false; 
+   }
+   
 }
