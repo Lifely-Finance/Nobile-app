@@ -22,8 +22,8 @@ function fmtDate(isoStr) {
   return d.getDate() + ' ' + MONTHS_RU[d.getMonth()].slice(0,3) + '.';
 }
 
-function todayISO() {
-  return localDateISO(new Date());
+const todayISO = localDateISO(new Date());
+
 }
 function localDateISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
