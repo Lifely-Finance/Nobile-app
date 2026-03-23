@@ -6,7 +6,7 @@
 const MONTHS_RU = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 const DAYS_RU   = ['вс','пн','вт','ср','чт','пт','сб'];
 
-function currentPeriod() {
+
   const now = new Date();
   now.setMonth(now.getMonth() + (DB.settings.monthOffset || 0));
   return { year: now.getFullYear(), month: now.getMonth() };
@@ -46,7 +46,7 @@ function setTxType(type) {
   const segs = { income: document.getElementById('seg-income'), expense: document.getElementById('seg-expense') };
   Object.entries(segs).forEach(([k,el]) => {
     el.className = 'seg' + (k===type ? ' on-'+type : '');
-  });
+  
   document.getElementById('tx-sheet-title').textContent = type==='income' ? 'Добавить доход' : 'Добавить расход';
 }
 
