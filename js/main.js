@@ -1,6 +1,6 @@
 /* Auto-split from original js/app.js. Global scripts only: no imports/exports. */
 
-(function () {
+
   function bindGlobalEventHandlers() {
     document.addEventListener('click', e => {
       if (!e.target.closest('.hab-swipe-wrap')) {
@@ -43,5 +43,5 @@
     bindGlobalEventHandlers();
     initApp();
   }
-})();
+
 
