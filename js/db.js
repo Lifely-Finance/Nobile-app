@@ -37,7 +37,7 @@ const ASSET_TYPE_PRESETS = [
 
 const LIQUID_ASSET_TYPE_IDS = ['cash', 'card', 'bank', 'deposit', 'savings'];
 
-function getAssetTypeMeta(type) {
+
   const rawType = (type || '').toString().trim();
   const normalized = rawType.toLowerCase();
   const preset = ASSET_TYPE_PRESETS.find(item => item.id === normalized);
@@ -80,7 +80,6 @@ function getAssetTypeMeta(type) {
   try {
     if (/Xbox/i.test(navigator.userAgent||'')) document.documentElement.classList.add('is-xbox');
   } catch(e) {}
-})();
 
 /* ═══════════════════════════════════════
    LOCALSTORAGE PERSISTENCE
