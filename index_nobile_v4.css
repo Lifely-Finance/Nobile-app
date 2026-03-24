@@ -5520,3 +5520,165 @@ html.is-xbox body { zoom: .8; }
 @supports not (zoom: 1) {
   html.is-xbox body { transform: scale(.8); transform-origin: top left; width: 125%; min-height: 125%; }
 }
+
+
+/* ═══════════════════════════════════════
+   AUTH LOGO / BRAND / PIN UX PATCH
+═══════════════════════════════════════ */
+.auth-logo-wrap {
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+}
+.auth-logo-wrap > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: opacity .18s ease, visibility .18s ease;
+}
+.auth-logo-wrap.auth-logo-ready > img {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.auth-logo-lottie {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.auth-logo-lottie canvas,
+.auth-logo-lottie svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+.auth-brand--wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  letter-spacing: -.04em;
+}
+.auth-brand--wave > span {
+  display: inline-block;
+  background: linear-gradient(
+    105deg,
+    #f4f6fb 0%,
+    #c7ced9 14%,
+    #ffffff 28%,
+    #b7bfcb 43%,
+    #fbfcff 56%,
+    #adb5c2 72%,
+    #ffffff 86%,
+    #c0c8d3 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,.08));
+  animation: nobileFlagWave 2.8s linear infinite;
+}
+.auth-brand--pin {
+  font-size: 1.06rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+@keyframes nobileFlagWave {
+  0%   { background-position: 200% 50%; transform: translateY(0) skewX(0deg); }
+  25%  { background-position: 138% 44%; transform: translateY(-1px) skewX(-2deg); }
+  50%  { background-position: 84% 58%; transform: translateY(1px) skewX(1.5deg); }
+  75%  { background-position: 26% 45%; transform: translateY(-1px) skewX(-1deg); }
+  100% { background-position: -40% 50%; transform: translateY(0) skewX(0deg); }
+}
+.auth-unlock-layout {
+  justify-content: flex-start !important;
+  padding: 44px 32px 24px !important;
+}
+.unlock-pin-dots {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  transition: transform .24s ease, filter .24s ease;
+}
+.unlock-pin-dots.is-ok {
+  filter: drop-shadow(0 0 8px rgba(45,232,176,.35));
+}
+.unlock-pin-dots.is-error {
+  filter: drop-shadow(0 0 8px rgba(255,107,107,.30));
+}
+.pin-status-indicator {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 16px;
+  margin-bottom: 18px;
+  transition: transform .24s ease, filter .24s ease;
+}
+.pin-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  box-shadow: 0 0 0 rgba(255,255,255,0);
+  opacity: .72;
+  animation: pinStatusPulse 1.2s ease-in-out infinite;
+}
+.pin-status-dot:nth-child(2) { animation-delay: .12s; }
+.pin-status-dot:nth-child(3) { animation-delay: .24s; }
+.pin-status-dot:nth-child(4) { animation-delay: .36s; }
+.pin-status-indicator.is-typing .pin-status-dot.is-active {
+  background: var(--blue);
+  box-shadow: 0 0 12px rgba(77,166,255,.32);
+}
+.pin-status-indicator.is-ok .pin-status-dot {
+  background: var(--mint);
+  box-shadow: 0 0 16px rgba(45,232,176,.45);
+}
+.pin-status-indicator.is-error .pin-status-dot {
+  background: var(--coral);
+  box-shadow: 0 0 14px rgba(255,107,107,.38);
+}
+.pin-status-indicator.shake,
+.unlock-pin-dots.shake {
+  animation: pinShake .36s ease;
+}
+@keyframes pinStatusPulse {
+  0%, 100% { transform: scale(.82); opacity: .38; }
+  50%      { transform: scale(1); opacity: .92; }
+}
+@keyframes pinShake {
+  10%, 90% { transform: translateX(-4px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-7px); }
+  40%, 60% { transform: translateX(7px); }
+}
+.unlock-hint {
+  display: none;
+}
+.pin-keypad-grid--unlock {
+  display: grid;
+  grid-template-columns: repeat(3,72px);
+  gap: 12px;
+  margin-top: 0;
+}
+.pin-dot {
+  transition: all .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.pin-dot.ok {
+  box-shadow: 0 0 12px rgba(45,232,176,.42);
+}
+.pin-dot.error {
+  box-shadow: 0 0 12px rgba(255,107,107,.32);
+}
