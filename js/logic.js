@@ -3453,6 +3453,13 @@ function authShowView(name) {
     el.style.display = 'block';
     el.classList.add('auth-active');
     el.scrollTop = 0;
+    window.refreshAuthLogos?.(el);
+    if (name === 'unlock') {
+      _unlockPinBuf = '';
+      updateUnlockDots();
+      const hint = document.getElementById('unlock-hint');
+      if (hint) hint.textContent = '';
+    }
   }
 }
 
@@ -3796,7 +3803,36 @@ async function skipPinSetup() {
 // ── Unlock with PIN (returning user) ──
 let _unlockPinBuf = '', _unlockAttempts = 0;
 
+function syncUnlockStatusIndicator(state = 'idle') {
+  const indicator = document.getElementById('unlock-status-indicator');
+  if (!indicator) return;
+
+  indicator.className = 'pin-status-indicator';
+  if (state === 'typing') indicator.classList.add('is-typing');
+  if (state === 'ok') indicator.classList.add('is-ok');
+  if (state === 'error') indicator.classList.add('is-error');
+
+  const activeCount = (state === 'ok' || state === 'error') ? 4 : _unlockPinBuf.length;
+  indicator.querySelectorAll('.pin-status-dot').forEach((dot, index) => {
+    dot.className = 'pin-status-dot';
+    if (index < activeCount) dot.classList.add('is-active');
+  });
+}
+
+function triggerUnlockShake() {
+  ['unlock-status-indicator', 'unlock-pin-dots'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+  });
+}
+
 function updateUnlockDots(state = 'normal') {
+  const wrap = document.getElementById('unlock-pin-dots');
+  if (wrap) wrap.className = 'unlock-pin-dots';
+
   for (let i = 0; i < 4; i++) {
     const d = document.getElementById('upd-' + i);
     if (!d) continue;
@@ -3805,6 +3841,21 @@ function updateUnlockDots(state = 'normal') {
     else if (state === 'ok') d.classList.add('ok');
     else if (i < _unlockPinBuf.length) d.classList.add('filled');
   }
+
+  if (state === 'error') {
+    if (wrap) wrap.classList.add('is-error');
+    syncUnlockStatusIndicator('error');
+    triggerUnlockShake();
+    return;
+  }
+
+  if (state === 'ok') {
+    if (wrap) wrap.classList.add('is-ok');
+    syncUnlockStatusIndicator('ok');
+    return;
+  }
+
+  syncUnlockStatusIndicator(_unlockPinBuf.length ? 'typing' : 'idle');
 }
 
 function unlockPinInput(digit) {
@@ -3828,33 +3879,37 @@ async function handleUnlockPin() {
     _unlockAttempts++;
     _unlockPinBuf = '';
     const el = document.getElementById('unlock-hint');
-    if (el) el.textContent = _unlockAttempts >= 3 ? `Неверно (${_unlockAttempts} попытки)` : 'Неверный PIN';
-    el && (el.style.color = 'var(--coral)');
+    if (el) el.textContent = '';
     updateUnlockDots('error');
-    setTimeout(() => { updateUnlockDots(); if (el) { el.textContent = ''; el.style.color = 'var(--muted)'; } }, 1000);
+    setTimeout(() => { updateUnlockDots(); }, 900);
     return;
   }
 
   updateUnlockDots('ok');
   const hintEl2 = document.getElementById('unlock-hint');
-  if (hintEl2) { hintEl2.textContent = '🔐 Расшифровка...'; hintEl2.style.color = 'var(--muted)'; }
+  if (hintEl2) hintEl2.textContent = '';
   showAuthLoading('Расшифровка данных...');
   try {
     _cryptoKey = await deriveKey(_unlockPinBuf, salt);
     const ok = await loadDB();
     if (!ok) {
-      if (hintEl2) { hintEl2.textContent = 'Ошибка расшифровки данных'; hintEl2.style.color = 'var(--coral)'; }
+      hideAuthLoading();
       _cryptoKey = null;
+      _unlockPinBuf = '';
+      updateUnlockDots('error');
+      setTimeout(() => { updateUnlockDots(); }, 900);
       return;
     }
     const auth = getAuth();
     if (auth?.name) { DB.user.name = auth.name; }
     hideAuthLoading();
-    if (hintEl2) { hintEl2.textContent = '✅ Вход выполнен'; hintEl2.style.color = 'var(--mint)'; }
-    setTimeout(() => afterAuthSuccess(), 400);
+    setTimeout(() => afterAuthSuccess(), 420);
   } catch(e) {
-    if (hintEl2) { hintEl2.textContent = 'Ошибка — попробуйте снова'; hintEl2.style.color = 'var(--coral)'; }
+    hideAuthLoading();
     _cryptoKey = null;
+    _unlockPinBuf = '';
+    updateUnlockDots('error');
+    setTimeout(() => { updateUnlockDots(); }, 900);
   }
 }
 

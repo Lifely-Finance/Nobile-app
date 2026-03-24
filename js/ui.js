@@ -5218,7 +5218,7 @@ function dismissAlert(i) {
       loop: options.loop !== undefined ? options.loop : true,
       autoplay: options.autoplay !== undefined ? options.autoplay : true,
       animationData: _lottieData,
-      rendererSettings: { preserveAspectRatio: 'xMidYMid meet', clearCanvas: true }
+      rendererSettings: { preserveAspectRatio: options.preserveAspectRatio || 'xMidYMid meet', clearCanvas: true }
     });
     _lottieInstances[containerId] = inst;
     return inst;
@@ -5298,25 +5298,43 @@ function dismissAlert(i) {
   }
 
   // ── Auth/onboarding logos (also replace with lottie) ──
-  function initAuthLogos() {
-    document.querySelectorAll('.auth-logo-wrap').forEach((wrap, i) => {
-      const id = 'auth-lottie-' + i;
+  function initAuthLogos(root = document) {
+    const wraps = root?.matches?.('.auth-logo-wrap')
+      ? [root]
+      : Array.from((root || document).querySelectorAll('.auth-logo-wrap'));
+
+    wraps.forEach((wrap) => {
+      const globalIndex = Array.from(document.querySelectorAll('.auth-logo-wrap')).indexOf(wrap);
+      const id = wrap.dataset.lottieId || ('auth-lottie-' + Math.max(globalIndex, 0));
       let holder = wrap.querySelector('.auth-logo-lottie');
+
       if (!holder) {
         holder = document.createElement('div');
         holder.className = 'auth-logo-lottie';
         wrap.appendChild(holder);
       }
+
+      wrap.dataset.lottieId = id;
       holder.id = id;
+
       const size = parseFloat(wrap.dataset.logoSize || '100');
       const scale = parseFloat(wrap.dataset.logoScale || '1');
       holder.style.width = size + '%';
       holder.style.height = size + '%';
       holder.style.transform = 'scale(' + scale + ')';
+
       wrap.classList.add('auth-logo-ready');
-      createLottie(id, { loop: true, autoplay: true });
+      createLottie(id, {
+        loop: true,
+        autoplay: true,
+        preserveAspectRatio: wrap.classList.contains('auth-logo-frame--hero') ? 'xMidYMid slice' : 'xMidYMid meet'
+      });
     });
   }
+
+  window.refreshAuthLogos = function(root = document) {
+    initAuthLogos(root);
+  };
 
   // ── Boot sequence ──
   document.addEventListener('DOMContentLoaded', () => {
