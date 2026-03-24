@@ -1476,14 +1476,14 @@ body {
 .auth-bg-glow { position:absolute; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(77,166,255,.12) 0%, transparent 70%); top:-60px; left:50%; transform:translateX(-50%); pointer-events:none; }
 .auth-logo-wrap { width:160px; height:160px; border-radius:0; background:transparent; border:none; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; position:relative; }
 .auth-logo-wrap > img { width:100%; height:100%; object-fit:contain; display:block; }
-.auth-logo-wrap.auth-logo-ready > img { display:none; }
+.auth-logo-wrap.auth-logo-ready > img { display:none; } /* Overridden below */
 .auth-logo-frame { isolation:isolate; }
 .auth-logo-lottie { width:100%; height:100%; display:flex; align-items:center; justify-content:center; transform-origin:center; pointer-events:none; will-change:transform; }
 .auth-logo-frame--hero { border-radius:32px !important; }
 .auth-logo-frame--form { border-radius:28px !important; }
 .auth-logo-frame--pin { border-radius:28px !important; }
 .auth-logo-icon { font-size:2.2rem; color:var(--blue); font-family:var(--font-head); font-weight:900; line-height:1; }
-.auth-brand { font-family:var(--font-head); font-size:2.6rem; font-weight:900; letter-spacing:-.03em; }
+.auth-brand { font-family:var(--font-head); font-size:2.6rem; font-weight:900; letter-spacing:0.04em; }
 .auth-tagline { font-size:.8rem; color:var(--muted); margin-top:4px; margin-bottom:24px; }
 .auth-feature-pills { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:40px; }
 .auth-pill { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:5px 12px; font-size:.68rem; color:var(--muted); }
@@ -5540,8 +5540,8 @@ html.is-xbox body { zoom: .8; }
   transition: opacity .18s ease, visibility .18s ease;
 }
 .auth-logo-wrap.auth-logo-ready > img {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: none;
 }
 .auth-logo-lottie {
@@ -5587,19 +5587,17 @@ html.is-xbox body { zoom: .8; }
   -webkit-text-fill-color: transparent;
   color: transparent;
   filter: drop-shadow(0 0 10px rgba(255,255,255,.08));
-  animation: nobileFlagWave 2.8s linear infinite;
+  animation: nobileFlagWave 8s linear infinite;
 }
 .auth-brand--pin {
-  font-size: 1.06rem;
-  font-weight: 800;
-  margin-bottom: 10px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
 }
 @keyframes nobileFlagWave {
-  0%   { background-position: 200% 50%; transform: translateY(0) skewX(0deg); }
-  25%  { background-position: 138% 44%; transform: translateY(-1px) skewX(-2deg); }
-  50%  { background-position: 84% 58%; transform: translateY(1px) skewX(1.5deg); }
-  75%  { background-position: 26% 45%; transform: translateY(-1px) skewX(-1deg); }
-  100% { background-position: -40% 50%; transform: translateY(0) skewX(0deg); }
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -40% 50%; }
 }
 .auth-unlock-layout {
   justify-content: flex-start !important;
@@ -5681,4 +5679,30 @@ html.is-xbox body { zoom: .8; }
 }
 .pin-dot.error {
   box-shadow: 0 0 12px rgba(255,107,107,.32);
+}
+
+
+/* ══ NOBILE v4.1.2 FIXES ══ */
+/* Логотип всегда виден (не скрывается при auth-logo-ready) */
+.auth-logo-wrap > img {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+.auth-logo-wrap.auth-logo-ready > img {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+/* Название Nobile - статичное, только градиент */
+.auth-brand--wave > span {
+  animation: nobileFlagWave 8s linear infinite;
+  transform: none;
+}
+/* Убираем pin-status-indicator (анимированные пульсирующие точки) */
+.pin-status-indicator {
+  display: none !important;
+}
+/* Unlock layout - убираем flex-start, ставим flex-start с паддингом под логотип */
+.auth-unlock-layout {
+  padding-top: 52px !important;
 }
