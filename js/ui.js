@@ -5277,7 +5277,13 @@ function dismissAlert(i) {
     _loadingTimer = setTimeout(() => {
       const el = document.getElementById('splash-screen');
       if (!el) return;
+      // Hide brand text during loading reuse (show only lottie)
+      const brand = el.querySelector('.splash-brand');
+      if (brand) brand.style.visibility = 'hidden';
       el.classList.remove('hidden', 'hiding');
+      // Restart lottie so canvas is never blank
+      const inst = _lottieInstances['splash-lottie-container'];
+      if (inst) { inst.goToAndPlay(0, true); }
       _loadingShown = true;
     }, 300);
   };
@@ -5285,6 +5291,12 @@ function dismissAlert(i) {
   window._hideLoadingOverlay = function() {
     if (_loadingTimer) { clearTimeout(_loadingTimer); _loadingTimer = null; }
     if (_loadingShown) {
+      // Restore brand visibility for real splash (if ever reused)
+      const el = document.getElementById('splash-screen');
+      if (el) {
+        const brand = el.querySelector('.splash-brand');
+        if (brand) brand.style.visibility = '';
+      }
       _splashDone = false; // allow hide again
       hideSplash();
       _loadingShown = false;
