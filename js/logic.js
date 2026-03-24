@@ -22,8 +22,8 @@ function fmtDate(isoStr) {
   return d.getDate() + ' ' + MONTHS_RU[d.getMonth()].slice(0,3) + '.';
 }
 
-const todayISO = localDateISO(new Date());
-
+function todayISO() {
+  return localDateISO(new Date());
 }
 function localDateISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -3604,49 +3604,83 @@ async function authLogin() {
 }
 
 // ── Social Auth ──
+const SOCIAL_OAUTH_CONFIG = window.NOBILE_OAUTH || {};
 const SOCIAL_PROVIDERS = {
   yandex: {
     name: 'Яндекс ID',
-    icon: '🟠',
+    buttonLabel: 'Яндекс',
     color: '#FC3F1D',
-    desc: 'Войдите через Яндекс ID. Мы получим только ваше имя и email для создания профиля.',
-    note: 'Финансовые данные не передаются Яндексу и хранятся только на вашем устройстве.',
-    url: 'https://oauth.yandex.ru/authorize?response_type=code&client_id=demo&scope=login:email+login:info&redirect_uri=' + encodeURIComponent(location.href),
+    desc: 'Вход через Яндекс ID с реальной OAuth-конфигурацией приложения.',
+    note: 'Нужны ваш client_id и redirect_uri. Данные Nobile не передаются Яндексу, кроме профиля, который вы сами разрешите.',
+    iconSvg: '<span class="auth-social-icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13.5 4.8h-1.1c-2.5 0-4 1.3-4 3.6 0 1.9.8 3.1 2.5 4.3l1 .7-3.1 5H6.3l3.1-4.9c-1.8-1.2-2.9-2.6-2.9-5.1 0-3.4 2.4-5.4 6-5.4H16v15.3h-2.5V4.8z" fill="white"></path></svg></span>',
+    getAuthUrl() {
+      const cfg = SOCIAL_OAUTH_CONFIG.yandex || {};
+      if (!cfg.clientId || !cfg.redirectUri) return null;
+      return 'https://oauth.yandex.ru/authorize?response_type=code&client_id=' + encodeURIComponent(cfg.clientId) + '&redirect_uri=' + encodeURIComponent(cfg.redirectUri);
+    }
   },
   vk: {
     name: 'VK ID',
-    icon: '💙',
+    buttonLabel: 'VK',
     color: '#0077FF',
-    desc: 'Войдите через VK ID. Мы получим только ваше имя для создания профиля.',
-    note: 'Данные Nobile не связаны с вашим VK аккаунтом.',
-    url: 'https://oauth.vk.com/authorize?client_id=demo&display=mobile&scope=email&response_type=code&v=5.131',
+    desc: 'Вход через VK ID с реальной OAuth-конфигурацией приложения.',
+    note: 'Для VK ID нужен app_id / client_id и redirect_uri, зарегистрированные в кабинете разработчика VK.',
+    iconSvg: '<span class="auth-social-icon-badge" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M25.5 33.5h2.4s.7-.1 1.1-.5c.4-.4.4-1.1.4-1.1s-.1-3.4 1.5-3.9c1.6-.5 3.6 3.3 5.8 4.7.6.4 1.8.9 1.8.9l3.7-.1s1.9-.1 1-.7c-.1-.1-.6-.6-2.4-2.3-2.5-2.4-2.2-2-.7-4.1 1-1.4 3.2-5 2-5.8-.3-.2-.9-.3-.9-.3l-4.1.1s-.3 0-.5.2c-.2.2-.3.5-.3.5s-.8 2.2-1.9 4.1c-2.3 3.8-3.2 4-3.5 3.8-.9-.5-.7-2.1-.7-3.2 0-3.5.5-4.9-.9-5.3-.4-.1-.8-.2-2-.2-1.5 0-2.8.1-3.5.4-1.3.6-.5.8-.5.8s1 .4 1.4 1.7c.5 1.7.5 5.5-.3 6.3-.8.8-2.7-2.7-3.9-5.4-.7-1.4-1-2.3-1-2.3s-.1-.3-.3-.5c-.2-.2-.7-.3-.7-.3l-3.9.1s-.6 0-.8.3c-.2.2 0 .7 0 .7s3 7.2 6.4 10.8c3.1 3.4 6.7 3.1 6.7 3.1h-.1z" fill="white"></path></svg></span>',
+    getAuthUrl() {
+      const cfg = SOCIAL_OAUTH_CONFIG.vk || {};
+      if (!(cfg.clientId || cfg.appId) || !cfg.redirectUri) return null;
+      const id = cfg.clientId || cfg.appId;
+      return 'https://id.vk.com/authorize?response_type=code&client_id=' + encodeURIComponent(id) + '&redirect_uri=' + encodeURIComponent(cfg.redirectUri) + '&scope=email';
+    }
   },
   gosuslugi: {
     name: 'Госуслуги',
-    icon: '🏛️',
+    buttonLabel: 'Госуслуги',
     color: '#0050A0',
-    desc: 'Авторизация через ЕСИА (Госуслуги). Используется только для подтверждения личности.',
-    note: 'Nobile не передаёт финансовые данные в государственные системы.',
-    url: 'https://esia.gosuslugi.ru/aas/oauth2/ac?client_id=demo&response_type=code&scope=openid+fullname+email&redirect_uri=' + encodeURIComponent(location.href),
+    desc: 'Вход через ЕСИА (Госуслуги) с реальной интеграцией вашей организации.',
+    note: 'Для ЕСИА нужна зарегистрированная организация и рабочие параметры интеграции. Без них кнопка не может завершить вход честно и безопасно.',
+    iconSvg: '<span class="auth-social-icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 6.5h10M7 12h10M7 17.5h10" stroke="white" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="6.5" r="1.2" fill="white"/><circle cx="5" cy="12" r="1.2" fill="white"/><circle cx="5" cy="17.5" r="1.2" fill="white"/></svg></span>',
+    getAuthUrl() {
+      const cfg = SOCIAL_OAUTH_CONFIG.gosuslugi || {};
+      if (!cfg.clientId || !cfg.redirectUri) return null;
+      return 'https://esia.gosuslugi.ru/aas/oauth2/ac?response_type=code&client_id=' + encodeURIComponent(cfg.clientId) + '&redirect_uri=' + encodeURIComponent(cfg.redirectUri) + '&scope=openid+fullname+email';
+    }
   },
   max: {
-    name: 'Мессенджер MAX',
-    icon: '💬',
-    color: '#5865F2',
-    desc: 'Войдите через аккаунт в мессенджере MAX (экс-ВКонтакте Почта Mail).',
-    note: 'Финансовые данные остаются только на вашем устройстве.',
-    url: 'https://connect.mail.ru/oauth/authorize?client_id=demo&response_type=code&scope=userinfo&redirect_uri=' + encodeURIComponent(location.href),
+    name: 'MAX',
+    buttonLabel: 'MAX',
+    color: '#6C63FF',
+    desc: 'Вход через MAX с использованием реальной OAuth-конфигурации проекта.',
+    note: 'Для MAX нужны выданные приложению client_id и redirect_uri. Фейковая авторизация в коде отключена.',
+    iconSvg: '<span class="auth-social-icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18V6h2.4l4.6 6.1L16.6 6H19v12h-2.4v-8.2l-4.4 5.8h-.4L7.4 9.8V18H5z" fill="white"></path></svg></span>',
+    getAuthUrl() {
+      const cfg = SOCIAL_OAUTH_CONFIG.max || {};
+      if (!cfg.clientId || !cfg.redirectUri) return null;
+      return 'https://connect.mail.ru/oauth/authorize?response_type=code&client_id=' + encodeURIComponent(cfg.clientId) + '&redirect_uri=' + encodeURIComponent(cfg.redirectUri);
+    }
   },
 };
 
 let _currentSocialProvider = null;
+
+function hydrateAuthSocialButtons() {
+  document.querySelectorAll('.auth-social-btn').forEach(btn => {
+    const provider = btn.getAttribute('data-provider') || (btn.getAttribute('onclick') || '').match(/authSocial\('([^']+)'\)/)?.[1];
+    const p = provider ? SOCIAL_PROVIDERS[provider] : null;
+    if (!p) return;
+    btn.setAttribute('data-provider', provider);
+    btn.innerHTML = p.iconSvg + '<span class="auth-social-label">' + p.buttonLabel + '</span>';
+    btn.setAttribute('aria-label', 'Войти через ' + p.name);
+  });
+}
 
 function authSocial(provider) {
   const p = SOCIAL_PROVIDERS[provider];
   if (!p) return;
   _currentSocialProvider = provider;
 
-  document.getElementById('social-icon').textContent  = p.icon;
+  const iconEl = document.getElementById('social-icon');
+  if (iconEl) iconEl.innerHTML = p.iconSvg;
   document.getElementById('social-title').textContent = p.name;
   document.getElementById('social-sub').textContent   = 'Быстрый и безопасный вход';
   document.getElementById('social-info-block').innerHTML = `
@@ -3657,12 +3691,8 @@ function authSocial(provider) {
     <div class="social-info-row" style="margin-top:8px">
       <span style="font-size:1.1rem">🔒</span>
       <div style="font-size:.76rem;color:var(--muted);line-height:1.5">${p.note}</div>
-    </div>
-    <div class="social-info-row" style="margin-top:8px">
-      <span style="font-size:1.1rem">⚠️</span>
-      <div style="font-size:.76rem;color:var(--muted);line-height:1.5">Требуется реальная интеграция OAuth. Сейчас — демо-режим.</div>
     </div>`;
-  document.getElementById('social-main-btn').textContent = 'Войти через ' + p.name;
+  document.getElementById('social-main-btn').textContent = 'Продолжить через ' + p.name;
   document.getElementById('social-main-btn').style.background = p.color;
   authShowView('social');
 }
@@ -3670,19 +3700,12 @@ function authSocial(provider) {
 function doSocialConnect() {
   const p = SOCIAL_PROVIDERS[_currentSocialProvider];
   if (!p) return;
-  // Demo mode — simulate successful OAuth
-  showToast('🔄 Демо: имитация входа через ' + p.name + '...');
-  setTimeout(async () => {
-    const demoName  = { yandex: 'Пользователь Яндекса', vk: 'Пользователь VK', gosuslugi: 'Иванов Иван', max: 'MAX User' }[_currentSocialProvider];
-    const demoEmail = _currentSocialProvider + '_user@demo.ru';
-    const auth = { name: demoName, email: demoEmail, emailH: await hashStr(demoEmail), provider: _currentSocialProvider, pinHash: null, createdAt: new Date().toISOString() };
-    saveAuth(auth);
-    DB.user.name  = demoName;
-    DB.user.email = demoEmail;
-    showToast('✅ Вошли как ' + demoName);
-    authShowView('pin');
-    resetPinSetupState('first');
-  }, 1200);
+  const authUrl = typeof p.getAuthUrl === 'function' ? p.getAuthUrl() : null;
+  if (!authUrl) {
+    showToast('Для ' + p.name + ' не настроены client_id и redirect_uri. Добавьте window.NOBILE_OAUTH в index.html.');
+    return;
+  }
+  window.location.href = authUrl;
 }
 
 // ── Forgot password ──
@@ -3837,34 +3860,13 @@ async function handleUnlockPin() {
 
 // ── Biometric ──
 async function tryBiometric() {
-  if (!window.PublicKeyCredential) return;
-  try {
-    const avail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!avail) return;
-    document.getElementById('biometric-row')?.style && (document.getElementById('biometric-row').style.display = 'block');
-  } catch {}
+  const row = document.getElementById('biometric-row');
+  if (row) row.style.display = 'none';
+  return false;
 }
 
 async function unlockBiometric() {
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    await navigator.credentials.get({
-      publicKey: { challenge, userVerification: 'required', rpId: location.hostname || 'localhost', allowCredentials: [] }
-    });
-    // If biometric OK, use stored key
-    const storedKey = localStorage.getItem('nobile_bio_key');
-    if (storedKey) {
-      _cryptoKey = null; // simplified — use passthrough
-      await loadDB();
-      const auth = getAuth();
-      if (auth?.name) DB.user.name = auth.name;
-      afterAuthSuccess();
-    } else {
-      showToast('Биометрия: нет сохранённого ключа. Используйте PIN.');
-    }
-  } catch(e) {
-    showToast('Биометрия отменена — введите PIN');
-  }
+  showToast('Биометрический вход временно скрыт до полноценной безопасной интеграции. Используйте PIN.');
 }
 
 function authSwitchAccount() {
@@ -3915,18 +3917,26 @@ async function afterAuthSuccess() {
 
 // ── Boot ──
 
-// PWA setup: generate inline manifest for standalone mode
+// PWA setup: generate manifest that uses the real app logo
 function setupPWA() {
   try {
+    const icon192 = './icons/nobile-logo-192.png';
+    const icon512 = './icons/nobile-logo-512.png';
+    const apple180 = './icons/nobile-logo-180.png';
     const manifest = {
       name: 'Nobile', short_name: 'Nobile', start_url: './',
       display: 'standalone', background_color: '#0d0f14', theme_color: '#0d0f14',
-      icons: [{ src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d0f14'/><text y='.9em' font-size='82' x='8'>N</text></svg>", sizes: '192x192', type: 'image/svg+xml' }]
+      icons: [
+        { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+      ]
     };
     const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
     const url  = URL.createObjectURL(blob);
     const el   = document.getElementById('pwa-manifest');
     if (el) el.href = url;
+    const apple = document.getElementById('apple-touch-icon');
+    if (apple) apple.href = apple180;
   } catch(e) { /* PWA not supported */ }
 }
 
@@ -3970,6 +3980,7 @@ async function bootApp() {
   authShowView('welcome');
 }
 
+hydrateAuthSocialButtons();
 try { bootApp(); } catch(e) { console.error('Boot error:', e); }
 
 // Global: close habit swipe panels on outside tap
@@ -5546,9 +5557,4 @@ async function openHabitTips(habitId) {
   }
 
   el.innerHTML = html;
-   function isPaymentPaid(payment) {
-    // Временная заглушка, чтобы приложение не вылетало
-    return false; 
-   }
-   
 }
