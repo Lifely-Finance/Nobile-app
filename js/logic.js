@@ -3980,7 +3980,7 @@ function setupPWA() {
     const apple180 = './icons/nobile-logo-180.png';
     const manifest = {
       name: 'Nobile', short_name: 'Nobile', start_url: './',
-      display: 'standalone', background_color: '#0d0f14', theme_color: '#0d0f14',
+      display: 'standalone', background_color: '#000000', theme_color: '#000000',
       icons: [
         { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
         { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
