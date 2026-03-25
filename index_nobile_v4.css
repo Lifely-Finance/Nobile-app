@@ -5650,30 +5650,18 @@ html.is-xbox body { zoom: .8; }
 .unlock-pin-dots.is-error {
   filter: drop-shadow(0 0 8px rgba(255,107,107,.30));
 }
-/* PIN success: all dots rise TOGETHER with building glow — no stagger */
+/* PIN success: single smooth ascent + building glow — stays up */
 .unlock-pin-dots.is-ok .pin-dot.ok {
-  animation: pinDotBounceGlow .65s cubic-bezier(.22,.68,0,1.15) forwards;
+  animation: pinDotRiseGlow .75s ease-out forwards;
 }
-@keyframes pinDotBounceGlow {
+@keyframes pinDotRiseGlow {
   0%   {
-    transform: translateY(0)    scale(1);
-    box-shadow: 0 0 0   0   rgba(45,232,176,0);
-  }
-  30%  {
-    transform: translateY(-11px) scale(1.22);
-    box-shadow: 0 0 22px 6px rgba(45,232,176,.65);
-  }
-  60%  {
-    transform: translateY(3px)  scale(.95);
-    box-shadow: 0 0 12px 3px rgba(45,232,176,.38);
-  }
-  80%  {
-    transform: translateY(-5px) scale(1.08);
-    box-shadow: 0 0 18px 5px rgba(45,232,176,.52);
+    transform: translateY(0)     scale(1);
+    box-shadow: 0 0 0   0   rgba(45,232,176, 0);
   }
   100% {
-    transform: translateY(0)    scale(1);
-    box-shadow: 0 0 14px 3px rgba(45,232,176,.44);
+    transform: translateY(-10px) scale(1.14);
+    box-shadow: 0 0 22px 7px rgba(45,232,176, .68);
   }
 }
 .pin-status-indicator {
