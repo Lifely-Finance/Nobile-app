@@ -96,6 +96,16 @@
 <div class="hs-val coral" id="today-expense">0 ₽</div>
 </div>
 </div>
+<!-- Stress mini-indicator inside hero -->
+<div class="hero-stress" id="hero-stress-wrap" onclick="openStressModal()" style="cursor:pointer">
+  <div class="hero-stress-left">
+    <div class="hero-stress-label">Финансовый стресс</div>
+    <div class="hero-stress-bar-wrap">
+      <div class="hero-stress-bar-track"><div class="hero-stress-bar-fill" id="hero-stress-fill"></div></div>
+    </div>
+  </div>
+  <div class="hero-stress-pill" id="hero-stress-pill">—</div>
+</div>
 </div>
 <!-- Smart Alerts -->
 <div id="smart-alerts"></div>
@@ -2878,20 +2888,25 @@ document.addEventListener('DOMContentLoaded', initV3Features);
   </div>
 </div>
 
-<!-- ══ AI ANALYSIS OVERLAY ══ -->
-<div class="smart-income-overlay" id="ai-analysis-overlay">
-  <div class="overlay-bg" onclick="closeAIAnalysis()"></div>
-  <div class="smart-income-sheet" style="max-height:80vh;overflow-y:auto">
-    <div class="smart-income-title">🧠 AI Анализ месяца</div>
-    <div class="smart-income-subtitle">Персональная финансовая стратегия</div>
-    <div id="ai-analysis-content" style="padding:10px 0">
-      <div style="text-align:center;padding:30px">
-        <div class="spinner" style="width:40px;height:40px;border-width:3px"></div>
-        <div style="margin-top:15px;font-size:.8rem;color:var(--muted)">Анализируем ваши данные...</div>
-      </div>
+<!-- ══ STRESS DETAIL MODAL ══ -->
+<div class="stress-modal-overlay" id="stress-modal-overlay" onclick="closeStressModal()" style="display:none">
+  <div class="stress-modal-sheet" onclick="event.stopPropagation()">
+    <div class="stress-modal-handle"></div>
+    <div class="stress-modal-header">
+      <div class="stress-modal-title">🧠 Индекс финансового стресса</div>
+      <div class="stress-modal-pill" id="smod-pill">—</div>
     </div>
-    <div class="smart-income-actions">
-      <button class="btn-cancel-ap" onclick="closeAIAnalysis()">Закрыть</button>
+    <div class="stress-modal-score-row">
+      <div class="stress-modal-score-num" id="smod-score">—</div>
+      <div class="stress-modal-score-sub">/100 — ниже лучше</div>
+    </div>
+    <div class="stress-modal-bar-track"><div class="stress-modal-bar-fill" id="smod-fill"></div></div>
+    <div class="stress-modal-hint" id="smod-hint"></div>
+    <div class="stress-modal-chips" id="smod-chips"></div>
+    <div class="stress-modal-recs" id="smod-recs"></div>
+    <div class="stress-modal-actions">
+      <button class="stress-modal-btn-ai" onclick="closeStressModal();openStressAIPlan()">⚡ Спросить Nobile AI</button>
+      <button class="stress-modal-btn-close" onclick="closeStressModal()">Закрыть</button>
     </div>
   </div>
 </div>
