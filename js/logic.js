@@ -4045,19 +4045,31 @@ document.addEventListener('click', e => {
   }
 });
 
-// Header buttons
-// settings button removed from header; opened via profile dropdown
+// Header profile menu — wired after DOM is ready
+(function() {
+  function wireProfileMenu() {
+    const btn  = document.getElementById('btn-profile');
+    const menu = document.getElementById('prof-menu');
+    if (!btn || !menu) return;
 
-// profile menu wired below
-document.getElementById('btn-profile').addEventListener('click', function(e) {
-  e.stopPropagation();
-  const menu = document.getElementById('prof-menu');
-  if (menu) menu.classList.toggle('open');
-});
-document.addEventListener('click', function() {
-  const menu = document.getElementById('prof-menu');
-  if (menu) menu.classList.remove('open');
-});
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#btn-profile')) {
+        menu.classList.remove('open');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireProfileMenu);
+  } else {
+    wireProfileMenu();
+  }
+})();
 function closeProfMenu() {
   const menu = document.getElementById('prof-menu');
   if (menu) menu.classList.remove('open');
