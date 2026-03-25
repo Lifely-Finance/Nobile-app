@@ -264,93 +264,77 @@ ${recs}
   }, 400);
 }
 
-function renderStressIndex() {
-  const el = document.getElementById('stress-index-block');
-  if (!el) return;
+let _lastStressData = null;
 
-  const d = calcFinancialStress();
-  const levelTxt = d.level==='low' ? 'НИЗКИЙ' : d.level==='med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
-  const pillClass = d.level==='low' ? 'low' : d.level==='med' ? 'med' : 'high';
+function openStressModal() {
+  const d = _lastStressData || calcFinancialStress();
+  const overlay = document.getElementById('stress-modal-overlay');
+  if (!overlay) return;
 
+  const levelTxt = d.level === 'low' ? 'НИЗКИЙ' : d.level === 'med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
   const f = d.factors || [];
   const c1 = f[0] ? `${f[0].label}: ${f[0].text}` : '—';
   const c2 = f[1] ? `${f[1].label}: ${f[1].text}` : '—';
+  const netDailyTxt = `${d.netDaily >= 0 ? '+' : ''}${Math.round(d.netDaily).toLocaleString('ru')} ₽/день`;
+  const daysTxt = d.daysToZero === null ? '—' : `~${d.daysToZero} дн.`;
 
-  const netDailyTxt = `${d.netDaily>=0?'+':''}${Math.round(d.netDaily).toLocaleString('ru')} ₽/день`;
-  const daysTxt = (d.daysToZero===null) ? '—' : `~${d.daysToZero} дн.`;
+  document.getElementById('smod-pill').textContent = levelTxt;
+  document.getElementById('smod-pill').className   = 'stress-modal-pill ' + d.level;
+  document.getElementById('smod-score').textContent = d.score;
+  const fillEl = document.getElementById('smod-fill');
+  if (fillEl) { fillEl.style.width = '0%'; setTimeout(() => { fillEl.style.width = Math.max(4, Math.min(100, d.score)) + '%'; fillEl.style.backgroundPosition = d.level === 'low' ? '0% 50%' : d.level === 'med' ? '50% 50%' : '100% 50%'; }, 80); }
 
-  const hint = d.level==='high'
-    ? `<div class="stress-hint"><b style="color:var(--coral)">Высокий стресс.</b> Ниже — причины и быстрые шаги.</div>`
-    : d.level==='med'
-      ? `<div class="stress-hint">Есть зоны риска. Стабилизируй 1–2 фактора — индекс быстро упадёт.</div>`
-      : `<div class="stress-hint">Ситуация стабильная. Следи за динамикой и не давай тратам расти.</div>`;
+  const hintMsg = d.level === 'high'
+    ? '<b style="color:var(--coral)">Высокий стресс.</b> Ниже — причины и быстрые шаги.'
+    : d.level === 'med'
+    ? 'Есть зоны риска. Стабилизируй 1–2 фактора — индекс быстро упадёт.'
+    : 'Ситуация стабильная. Следи за динамикой и не давай тратам расти.';
+  document.getElementById('smod-hint').innerHTML = hintMsg;
 
-  const recs = (d.recommendations||[]).slice(0,3);
-  const recHtml = recs.length
-    ? `<div class="stress-recs">
-        <div class="stress-recs-h">Персональные рекомендации</div>
-        ${recs.map(x=>`<div class="stress-rec"><div class="dot"></div><div class="t">${x}</div></div>`).join('')}
-      </div>`
+  document.getElementById('smod-chips').innerHTML = `
+    <div class="stress-modal-chip"><div class="k">Ключевой фактор</div><div class="v">${c1}</div></div>
+    <div class="stress-modal-chip"><div class="k">Второй фактор</div><div class="v">${c2}</div></div>
+    <div class="stress-modal-chip"><div class="k">Дневной кешфлоу</div><div class="v" style="color:${d.netDaily >= 0 ? 'var(--mint)' : 'var(--coral)'}">${netDailyTxt}</div></div>
+    <div class="stress-modal-chip"><div class="k">Дней до нуля</div><div class="v">${daysTxt}</div></div>`;
+
+  const recs = (d.recommendations || []).slice(0, 4);
+  document.getElementById('smod-recs').innerHTML = recs.length
+    ? recs.map(r => `<div class="stress-modal-rec"><div class="stress-modal-rec-dot"></div><div>${r}</div></div>`).join('')
     : '';
 
-  // Compact: keep only essentials visible, details are expandable.
-  const primaryCtaLabel = d.level==='high' ? 'План действий' : 'Что улучшить?';
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
 
-  const detailActions = [
-    `<button class="stress-btn primary" onclick="openStressAIPlan()">Спросить Nobile AI</button>`,
-    `<button class="stress-btn" onclick="navTo('growth')">Расходы</button>`,
-    `<button class="stress-btn" onclick="navTo('capital')">Платежи</button>`,
-  ].filter(Boolean).join('');
+function closeStressModal() {
+  const overlay = document.getElementById('stress-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
 
-  el.innerHTML = `
-    <div class="stress-card stress-compact">
-      <div class="stress-top">
-        <div>
-          <div class="stress-title">Индекс финансового стресса</div>
-          <div class="stress-sub stress-sub-compact">Насколько спокойно «дышит» бюджет сейчас (0 — ок, 100 — тяжело)</div>
-        </div>
-        <div class="stress-pill ${pillClass}">${levelTxt}</div>
-      </div>
+function renderStressIndex() {
+  // Hide the old standalone block permanently
+  const el = document.getElementById('stress-index-block');
+  if (el) el.style.display = 'none';
 
-      <div class="stress-meter">
-        <div class="stress-bar"><div id="stress-bar-fill"></div></div>
-        <div class="stress-meta"><span>0</span><span class="stress-score">${d.score}/100</span><span>100</span></div>
-      </div>
+  // Update the mini-indicator inside the hero block
+  const d = calcFinancialStress();
+  _lastStressData = d;
 
-      <div class="stress-summary">
-        <div class="stress-summary-left">
-          <div class="stress-summary-k">Главное сейчас</div>
-          <div class="stress-summary-v">${c1}</div>
-        </div>
-        <button class="stress-btn primary" onclick="openStressAIPlan()">${primaryCtaLabel}</button>
-      </div>
+  const pill = document.getElementById('hero-stress-pill');
+  const fill = document.getElementById('hero-stress-fill');
 
-      <details class="stress-details">
-        <summary>Подробнее</summary>
-        <div class="stress-sub" style="margin-top:8px">ИИ учитывает: траты · колебания дохода · долги (плохие/хорошие) · подушку · дневной кешфлоу</div>
+  if (!pill || !fill) return;
 
-        <div class="stress-grid" style="margin-top:10px">
-          <div class="stress-chip"><div class="k">Ключевой фактор</div><div class="v">${c1}</div></div>
-          <div class="stress-chip"><div class="k">Второй фактор</div><div class="v">${c2}</div></div>
-          <div class="stress-chip"><div class="k">Дневной кешфлоу</div><div class="v" style="color:${d.netDaily>=0?'var(--mint)':'var(--coral)'}">${netDailyTxt}</div></div>
-          <div class="stress-chip"><div class="k">Дней до нуля</div><div class="v">${daysTxt}</div></div>
-        </div>
-
-        ${hint}
-        ${recHtml}
-
-        <div class="stress-actions">${detailActions}</div>
-      </details>
-    </div>`;
-
-  const bar = document.getElementById('stress-bar-fill');
-  if (bar) bar.style.width = Math.max(4, Math.min(100, d.score)) + '%';
+  const levelTxt = d.level === 'low' ? 'НИЗКИЙ' : d.level === 'med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
+  pill.textContent = levelTxt;
+  pill.className = 'hero-stress-pill ' + d.level;
+  fill.className  = 'hero-stress-bar-fill ' + d.level;
+  fill.style.width = Math.max(4, Math.min(100, d.score)) + '%';
 
   // Apply glow effect to header and body based on stress level
-  const hdr = document.querySelector('.hdr');
+  const hdr  = document.querySelector('.hdr');
   const body = document.body;
-
-  // Remove existing glow classes
   if (hdr) {
     hdr.classList.remove('hdr-stress-glow-low', 'hdr-stress-glow-med', 'hdr-stress-glow-high');
     hdr.classList.add('hdr-stress-glow-' + d.level);
@@ -649,20 +633,32 @@ function renderToday() {
   } else {
     window._habAllDoneAnimating = false;
     if (habWrap) { habWrap.style.maxHeight = '500px'; habWrap.style.opacity = '1'; habWrap.style.marginBottom = ''; }
-    const allHabitsToday = DB.habits.slice(0, 6);
-    habContainer.innerHTML = allHabitsToday.map(h => {
+
+    // ── Hidden priority sort (behavioural influence) ──
+    const PRIORITY_CATS_T = ['финанс','деньг','бюджет','трат','сбереж','finance','money'];
+    function habitPriorityScore(h) {
+      const streak     = getHabitStreak(h);
+      const nameL      = (h.name || '').toLowerCase();
+      const isFinance  = PRIORITY_CATS_T.some(k => nameL.includes(k));
+      const streakBonus = (streak >= 1 && streak <= 5) ? (6 - streak) * 8 : 0;
+      return streakBonus + (isFinance ? 15 : 0) + Math.random() * 2;
+    }
+    const sortedUndone = [...undone].sort((a, b) => habitPriorityScore(b) - habitPriorityScore(a));
+    const visibleHabits = [...sortedUndone, ...doneH].slice(0, 3);
+
+    habContainer.innerHTML = visibleHabits.map(h => {
       const isDone = !!h.completions?.[todayKey];
-      return `<div class="hab-swipe-wrap" data-hab-id="${h.id}" style="margin-bottom:6px">
+      return `<div class="hab-swipe-wrap hab-today-item" data-hab-id="${h.id}" style="margin-bottom:6px">
         <div class="hab-swipe-inner">
           <div class="hfr-ico" style="background:${isDone?'rgba(45,232,176,.15)':'var(--s2)'};cursor:pointer;flex-shrink:0;transition:background .2s"
-               onclick="event.stopPropagation();toggleHabit(${h.id},'${todayKey}')">${h.emoji}</div>
+               onclick="event.stopPropagation();toggleHabitToday(${h.id},'${todayKey}',this)">${h.emoji}</div>
           <div class="hfr-inf" style="flex:1;min-width:0">
             <div class="hfr-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isDone?'text-decoration:line-through;opacity:.5':''}">${h.name}</div>
             <div class="hfr-meta" style="font-size:.65rem">🔥${getHabitStreak(h)} дн. ${isDone?'· <span style=\"color:var(--mint)\">Выполнено ✓</span>':''}</div>
             ${buildHabitSparkline(h)}
           </div>
           <div class="habit-chk ${isDone?'done':'open'}" style="flex-shrink:0;cursor:pointer"
-               onclick="event.stopPropagation();toggleHabit(${h.id},'${todayKey}')">${isDone?'✓':''}</div>
+               onclick="event.stopPropagation();toggleHabitToday(${h.id},'${todayKey}',this)">${isDone?'✓':''}</div>
         </div>
         <div class="hab-swipe-actions">
           <button class="hab-sw-tips" onclick="event.stopPropagation();swipeHabit(${h.id});openHabitTips(${h.id})"><span>💡</span><span>Советы</span></button>
@@ -670,7 +666,9 @@ function renderToday() {
           <button class="hab-sw-del"  onclick="event.stopPropagation();swipeHabit(${h.id});deleteHabitConfirm(${h.id})"><span>🗑</span><span>Удал.</span></button>
         </div>
       </div>`;
-    }).join('') + (DB.habits.length > 6 ? `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:8px 0">+${DB.habits.length-6} ещё — открой «Система»</div>` : '');
+    }).join('') + (DB.habits.length > 3
+      ? `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:8px 0">ещё ${DB.habits.length - 3} — открой «Система»</div>`
+      : '');
   }
 
   // Attach swipe gestures to today habits

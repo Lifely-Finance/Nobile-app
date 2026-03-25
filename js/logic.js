@@ -510,6 +510,30 @@ function toggleHabit(habitId, dateStr) {
   renderAll();
 }
 
+// toggleHabitToday — used on the Today page: slide-out completed habit, slide in next
+function toggleHabitToday(habitId, dateStr, triggerEl) {
+  const h = DB.habits.find(h => h.id === habitId);
+  if (!h) return;
+  if (!h.completions) h.completions = {};
+  const wasDone = !!h.completions[dateStr];
+  h.completions[dateStr] = !wasDone;
+  if (!h.completions[dateStr]) delete h.completions[dateStr];
+  saveDB();
+  window._habAllDoneAnimating = false;
+  checkDailyChallengeAuto();
+
+  // Animate slide-out only when marking as DONE (not undoing)
+  if (!wasDone) {
+    const card = triggerEl ? triggerEl.closest('.hab-today-item') : null;
+    if (card) {
+      card.classList.add('fly-out');
+      setTimeout(() => renderAll(), 370);
+      return;
+    }
+  }
+  renderAll();
+}
+
 function getHabitStreak(habit) {
   let streak = 0, d = new Date();
   while (true) {
