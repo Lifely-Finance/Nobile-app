@@ -38,4 +38,4 @@ We follow a disclosure timeline as follows:
 2. Fix the vulnerability within 30 days, depending on severity.
 3. Notify the reporter after the fix is deployed.
 
-For any inquiries, please reach out to security@lifely-finance.com.
+For any inquiries, please reach out to nobile.finance@gmail.com
