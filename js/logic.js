@@ -4162,49 +4162,76 @@ function updatePushStatusLabel() {
   else el.textContent = 'Нажмите чтобы включить';
 }
 
-// ── Push Notifications ──
+// ── Push Notifications — Service Worker based ──
 async function togglePushNotif(enabled) {
+  const toggleEl = document.getElementById('tog-push');
+
   if (!('Notification' in window)) {
     showToast('❌ Браузер не поддерживает уведомления');
-    document.getElementById('tog-push').checked = false;
+    if (toggleEl) toggleEl.checked = false;
     return;
   }
+
   if (enabled) {
-    const perm = await Notification.requestPermission();
-    if (perm === 'granted') {
-      const ns = getNotifSettings();
-      ns.pushEnabled = true;
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
-      showToast('🔔 Пуш-уведомления включены!');
-      updatePushStatusLabel();
-      scheduleNotifications();
-      // Immediate welcome push
-      sendPush('🎉 Nobile уведомления включены!', 'Теперь вы будете получать напоминания о платежах и привычках.');
-    } else {
-      showToast('❌ Разрешение отклонено. Разрешите в настройках сайта.');
-      document.getElementById('tog-push').checked = false;
-      updatePushStatusLabel();
+    // Request permission
+    let perm = Notification.permission;
+    if (perm === 'default') {
+      perm = await Notification.requestPermission();
     }
+
+    if (perm !== 'granted') {
+      showToast('❌ Разрешение отклонено. Разрешите уведомления в настройках браузера/сайта.');
+      if (toggleEl) toggleEl.checked = false;
+      updatePushStatusLabel();
+      return;
+    }
+
+    // Permission granted — save and schedule
+    const ns = getNotifSettings();
+    ns.pushEnabled = true;
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
+    updatePushStatusLabel();
+    scheduleNotifications();
+
+    // Welcome notification via SW
+    await sendPush('🔔 Nobile уведомления включены!', 'Напоминания о платежах и привычках активированы.');
+    showToast('🔔 Пуш-уведомления включены!');
+
   } else {
     const ns = getNotifSettings();
     ns.pushEnabled = false;
     localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
     clearScheduledNotifications();
-    showToast('🔕 Пуш-уведомления отключены');
+    if (toggleEl) toggleEl.checked = false;
     updatePushStatusLabel();
+    showToast('🔕 Пуш-уведомления отключены');
   }
 }
 
-function sendPush(title, body, tag = 'nobile') {
+// Send notification via Service Worker (works in PWA on Android) or fallback to Notification API
+async function sendPush(title, body, tag = 'nobile') {
   if (Notification.permission !== 'granted') return;
   try {
+    // Prefer Service Worker showNotification (required for Android PWA)
+    const reg = window._swReg || await navigator.serviceWorker?.ready;
+    if (reg && reg.showNotification) {
+      await reg.showNotification(title, {
+        body,
+        tag,
+        icon: './icons/nobile-logo-192.png',
+        badge: './icons/nobile-logo-192.png',
+        vibrate: [100, 50, 100],
+        requireInteraction: false,
+        silent: false
+      });
+      return;
+    }
+  } catch(e) {}
+  // Fallback for desktop browsers without SW
+  try {
     const n = new Notification(title, {
-      body,
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%231a1a2e"/><text y="24" x="4" font-size="22">◈</text></svg>',
-      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="%234DA6FF"/></svg>',
-      tag,
-      requireInteraction: false,
-      silent: false
+      body, tag, icon: './icons/nobile-logo-192.png',
+      requireInteraction: false
     });
     n.onclick = () => { window.focus(); n.close(); };
     setTimeout(() => n.close(), 8000);
