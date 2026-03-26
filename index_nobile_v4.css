@@ -5756,53 +5756,43 @@ html.is-xbox body { zoom: .8; }
   padding-top: 52px !important;
 }
 
-/* ══ HERO STRESS MINI-INDICATOR ══ */
-.hero-stress {
-  margin-top: 14px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 14px;
+/* ══ HERO TOP ROW ══ */
+.hero-top-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: background .18s;
-  -webkit-tap-highlight-color: transparent;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2px;
+  position: relative; z-index: 1;
 }
-.hero-stress:active { background: rgba(255,255,255,.08); }
-.hero-stress-left { flex: 1; min-width: 0; }
-.hero-stress-label {
-  font-size: .65rem;
-  color: rgba(255,255,255,.45);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.hero-stress-bar-wrap { display: flex; align-items: center; gap: 8px; }
-.hero-stress-bar-track {
-  flex: 1; height: 5px;
-  background: rgba(255,255,255,.08);
-  border-radius: 99px; overflow: hidden;
-}
-.hero-stress-bar-fill {
-  height: 100%; width: 15%;
-  border-radius: 99px;
-  background: linear-gradient(90deg, #2DE8B0, #F5C842, #FF6B6B);
-  background-size: 300% 100%;
-  transition: width .6s cubic-bezier(.4,0,.2,1), background-position .6s;
-}
-.hero-stress-bar-fill.low  { background-position: 0% 50%; }
-.hero-stress-bar-fill.med  { background-position: 50% 50%; }
-.hero-stress-bar-fill.high { background-position: 100% 50%; }
-.hero-stress-pill {
-  font-size: .62rem; font-weight: 700;
-  letter-spacing: .07em;
-  padding: 4px 10px; border-radius: 99px;
+
+/* ══ HERO STRESS RING ══ */
+.hero-stress-ring {
+  position: relative;
+  width: 56px; height: 56px;
   flex-shrink: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  margin-top: -4px;
 }
-.hero-stress-pill.low  { background: rgba(45,232,176,.15); color: #2DE8B0; }
-.hero-stress-pill.med  { background: rgba(245,200,66,.15);  color: #F5C842; }
-.hero-stress-pill.high { background: rgba(255,107,107,.15); color: #FF6B6B; }
+.hero-stress-ring svg {
+  position: absolute; top: 0; left: 0;
+}
+.hero-stress-ring-inner {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.hero-stress-ring-val {
+  font-family: var(--font-head);
+  font-size: .78rem; font-weight: 900;
+  line-height: 1; color: var(--text);
+}
+.hero-stress-ring-lbl {
+  font-size: .42rem; color: rgba(255,255,255,.35);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-top: 1px;
+}
 
 /* ══ STRESS DETAIL MODAL ══ */
 .stress-modal-overlay {
