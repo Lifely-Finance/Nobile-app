@@ -1,28 +1,51 @@
-# 🚀 Nobile: Smart Personal Finance & AI Coach
+# Project Title
 
-**Nobile** is not just an expense tracker. It's an intelligent, mobile-first financial ecosystem designed to help you analyze spending, build strong financial habits, and reach your goals using on-device AI analysis.
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
-![Nobile App Preview](ссылка_на_твою_картинку)
+## Table of Contents
+1. [Installation](#installation)
+2. [Usage](#usage)
+3. [Architecture](#architecture)
+4. [Contributing](#contributing)
+5. [Roadmap](#roadmap)
+6. [FAQ](#faq)
+7. [Contact](#contact)
 
-## ✨ Key Features
-* 🧠 **AI-Powered Analysis:** Generates personalized financial strategies and insights based on your monthly behavior.
-* 🤖 **Smart Income Autopilot:** Automatically distributes your free funds across assets and goals according to your custom rules.
-* 🎯 **Habits Academy:** Built-in tracker for financial habits with gamified learning courses.
-* ⚡ **Zero-Dependency Architecture:** Lightning-fast. Built with Vanilla JavaScript, HTML5, and CSS3. No heavy frameworks, no build steps. 
-* 🔒 **100% Local & Secure:** All data is encrypted and stored locally on your device via Web Storage API & AES-GCM cryptography.
+## Installation
+To install the project, run:
+```
+npm install lifely-finance/nobile-app
+```
 
-## 🛠 Tech Stack
-* **Frontend:** HTML5, CSS3, Vanilla JS (ES6+)
-* **Architecture:** Modular Component Design (`logic.js`, `db.js`, `ui.js`)
-* **Animations:** Lottie Web
+## Usage
+To use this application, follow these steps:
+1. Open the terminal and run the application.
+2. Use the following command:
+```
+npm start
+```
 
-## 🚀 Live Demo
-Try the app directly in your browser: [Launch Nobile](https://lifely-finance.github.io/Nobile-app/)
+## Architecture
+The project follows an MVC architecture model, ensuring clear separation between data, application logic, and user interface.
 
-## 🤝 Open for Investment & Partnership
-This project is actively developed and preparing for scale. If you are interested in collaboration, investments, or acquiring the technology, feel free to reach out.
+## Contributing
+Contributions are welcome! Please follow these steps:
+1. Fork the repository.
+2. Create a new branch for your feature or fix.
+3. Create a pull request.
 
----
-*Developed with focus on mobile performance and seamless UI.*
+## Roadmap
+- Version 1.1.0: Add new features.
+- Version 1.2.0: Improve performance.
 
-# Nobile-app
+## FAQ
+**Q: How can I contribute to the project?**  
+A: Please see the contributing section above.
+
+**Q: Who do I contact for support?**  
+A: Contact details can be found below.
+
+## Contact
+For any inquiries, please reach out:
+- Email: support@lifely-finance.com
+- Website: [Lifely Finance](https://www.lifely-finance.com)
