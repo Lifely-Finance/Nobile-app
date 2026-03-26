@@ -1505,279 +1505,394 @@
 <!-- ══ SETTINGS PAGE ══ -->
 <div class="overlay" id="sheet-settings" style="align-items:flex-start">
 <div class="overlay-bg" onclick="closeSheet('settings')"></div>
-<div class="sheet" style="max-height:100dvh;border-radius:0;height:100dvh;overflow-y:auto;padding:0">
-<div style="display:flex;align-items:center;gap:12px;padding:14px 16px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(21,24,32,.98);backdrop-filter:blur(12px);z-index:2">
-<button onclick="closeSheet('settings')" style="width:34px;height:34px;border-radius:10px;background:var(--s2);border:1px solid var(--line);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
-<div style="font-family:var(--font-head);font-size:1rem;font-weight:800">Настройки</div>
+<div class="sheet sett-sheet" style="max-height:100dvh;border-radius:0;height:100dvh;overflow-y:auto;padding:0">
+
+<!-- Sticky header -->
+<div class="sett-header">
+  <button onclick="closeSheet('settings')" class="sett-back-btn">←</button>
+  <div class="sett-title">Настройки</div>
 </div>
-<div style="padding:0 16px 40px">
-<div class="sp-section-title">🔐 Безопасность</div>
-<div class="sp-card">
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(239,68,68,.12)">🔑</div>
-<div class="sp-txt">
-<div class="sp-label">Блокировка по PIN</div>
-<div class="sp-sub">Время до автоблокировки</div>
-<div class="sp-seg" id="lock-timeout-seg">
-<div class="sp-seg-btn active" data-val="0" onclick="selectLockTimeout(this,0)">Сразу</div>
-<div class="sp-seg-btn" data-val="60" onclick="selectLockTimeout(this,60)">1 мин</div>
-<div class="sp-seg-btn" data-val="300" onclick="selectLockTimeout(this,300)">5 мин</div>
-<div class="sp-seg-btn" data-val="900" onclick="selectLockTimeout(this,900)">15 мин</div>
-<div class="sp-seg-btn" data-val="-1" onclick="selectLockTimeout(this,-1)">Никогда</div>
-</div>
-</div>
-</div>
-<div class="sp-row clickable" onclick="changePin()">
-<div class="sp-ico" style="background:rgba(239,68,68,.12)">🔒</div>
-<div class="sp-txt"><div class="sp-label">Изменить PIN-код</div><div class="sp-sub">Пароль для расшифровки данных</div></div>
-<div class="sp-right"><span class="sp-chevron">›</span></div>
-</div>
-</div>
-<div class="sp-section-title">🎨 Отображение</div>
-<div class="sp-card">
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">💱</div>
-<div class="sp-txt">
-<div class="sp-label">Основная валюта</div>
-<div class="sp-sub">Для расчётов и отображения</div>
-<div class="sp-seg" id="currency-seg">
-<div class="sp-seg-btn active" data-val="RUB" onclick="selectCurrency(this,'RUB')">₽ RUB</div>
-<div class="sp-seg-btn" data-val="USD" onclick="selectCurrency(this,'USD')">$ USD</div>
-<div class="sp-seg-btn" data-val="EUR" onclick="selectCurrency(this,'EUR')">€ EUR</div>
-<div class="sp-seg-btn" data-val="CNY" onclick="selectCurrency(this,'CNY')">¥ CNY</div>
-</div>
-</div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">🔢</div>
-<div class="sp-txt">
-<div class="sp-label">Формат чисел</div>
-<div class="sp-sub">Разделитель тысяч</div>
-<div class="sp-seg" id="numfmt-seg">
-<div class="sp-seg-btn active" data-val="space" onclick="selectNumFmt(this,'space')">1 000 000</div>
-<div class="sp-seg-btn" data-val="comma" onclick="selectNumFmt(this,'comma')">1,000,000</div>
-<div class="sp-seg-btn" data-val="dot" onclick="selectNumFmt(this,'dot')">1.000.000</div>
-</div>
-</div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">📅</div>
-<div class="sp-txt">
-<div class="sp-label">День сброса бюджета</div>
-<div class="sp-sub">Начало финансового месяца</div>
-<div class="sp-seg" id="budget-day-seg">
-<div class="sp-seg-btn active" data-val="1" onclick="selectBudgetDay(this,1)">1-е</div>
-<div class="sp-seg-btn" data-val="5" onclick="selectBudgetDay(this,5)">5-е</div>
-<div class="sp-seg-btn" data-val="10" onclick="selectBudgetDay(this,10)">10-е</div>
-<div class="sp-seg-btn" data-val="15" onclick="selectBudgetDay(this,15)">15-е</div>
-<div class="sp-seg-btn" data-val="20" onclick="selectBudgetDay(this,20)">20-е</div>
-<div class="sp-seg-btn" data-val="25" onclick="selectBudgetDay(this,25)">25-е</div>
-</div>
-</div>
-</div>
-<div class="sp-row clickable" onclick="loadCurrency();showToast('🔄 Обновляю курсы...')">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">🌐</div>
-<div class="sp-txt"><div class="sp-label">Обновить курсы валют</div><div class="sp-sub">Получить актуальные данные</div></div>
-<div class="sp-right"><span class="sp-chevron">›</span></div>
-</div>
-</div>
-<div class="sp-section-title">📊 Финансы</div>
-<div class="sp-card">
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(245,200,66,.12)">🎯</div>
-<div class="sp-txt">
-<div class="sp-label">Порог предупреждения бюджета</div>
-<div class="sp-sub">При каком % расходов предупреждать</div>
-<div class="sp-seg" id="alert-threshold-seg">
-<div class="sp-seg-btn" data-val="70" onclick="selectAlertThresholdNew(this,70)">70%</div>
-<div class="sp-seg-btn" data-val="80" onclick="selectAlertThresholdNew(this,80)">80%</div>
-<div class="sp-seg-btn active" data-val="85" onclick="selectAlertThresholdNew(this,85)">85%</div>
-<div class="sp-seg-btn" data-val="90" onclick="selectAlertThresholdNew(this,90)">90%</div>
-<div class="sp-seg-btn" data-val="95" onclick="selectAlertThresholdNew(this,95)">95%</div>
-</div>
-</div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(245,200,66,.12)">📈</div>
-<div class="sp-txt"><div class="sp-label">Ставка доходности</div><div class="sp-sub">Для калькулятора цели</div></div>
-<div class="sp-right" style="gap:8px">
-<button onclick="adjustRate(-1)" style="width:28px;height:28px;border-radius:8px;background:var(--s2);border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:.9rem">−</button>
-<span id="set-rate-display" style="font-family:var(--font-head);font-size:.9rem;font-weight:800;min-width:38px;text-align:center;color:var(--gold)"></span>
-<button onclick="adjustRate(1)" style="width:28px;height:28px;border-radius:8px;background:var(--s2);border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:.9rem">+</button>
-</div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(245,200,66,.12)">🏦</div>
-<div class="sp-txt">
-<div class="sp-label">Норма сбережений</div>
-<div class="sp-sub">Целевой % дохода в накопления</div>
-<div class="sp-seg" id="savings-rate-seg">
-<div class="sp-seg-btn" data-val="10" onclick="selectSavingsRate(this,10)">10%</div>
-<div class="sp-seg-btn" data-val="15" onclick="selectSavingsRate(this,15)">15%</div>
-<div class="sp-seg-btn active" data-val="20" onclick="selectSavingsRate(this,20)">20%</div>
-<div class="sp-seg-btn" data-val="30" onclick="selectSavingsRate(this,30)">30%</div>
-<div class="sp-seg-btn" data-val="50" onclick="selectSavingsRate(this,50)">50%</div>
-</div>
-</div>
-</div>
-</div>
-<div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:10px">
-<div style="display:flex;align-items:center;gap:10px;width:100%">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">🤖</div>
-<div class="sp-txt" style="flex:1">
-<div class="sp-label">Автопилот распределения</div>
-<div class="sp-sub">ИИ делит доход автоматически при добавлении</div>
-</div>
-<label class="tog-wrap">
-<input id="set-autopilot-enabled" onchange="saveAutopilotSettings()" type="checkbox"/>
-<span class="tog-slider"></span>
-</label>
-</div>
-<div id="ap-settings-detail" style="display:none;width:100%;padding-left:44px">
-<div style="font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Доли распределения (%)</div>
-<div class="ap-pct-row">
-<div class="ap-pct-pill">
-<label>🏠 Жизнь</label>
-<input id="ap-pct-life" max="100" min="0" oninput="saveAutopilotSettings()" type="number" value="50"/>
-<span style="font-size:.72rem;color:var(--muted)">%</span>
-</div>
-<div class="ap-pct-pill">
-<label>🎯 Цели</label>
-<input id="ap-pct-goals" max="100" min="0" oninput="saveAutopilotSettings()" type="number" value="30"/>
-<span style="font-size:.72rem;color:var(--muted)">%</span>
-</div>
-<div class="ap-pct-pill">
-<label>🏦 Накопления</label>
-<input id="ap-pct-savings" max="100" min="0" oninput="saveAutopilotSettings()" type="number" value="10"/>
-<span style="font-size:.72rem;color:var(--muted)">%</span>
-</div>
-<div class="ap-pct-pill">
-<label>📈 Взнос в цель</label>
-<input id="ap-pct-goalcontrib" max="100" min="0" oninput="saveAutopilotSettings()" type="number" value="10"/>
-<span style="font-size:.72rem;color:var(--muted)">%</span>
-</div>
-</div>
-<div id="ap-pct-warning" style="display:none;font-size:.68rem;color:var(--coral);margin-top:6px">⚠ Сумма долей не равна 100%</div>
-</div>
-</div>
-<div class="sp-section-title">🔔 Уведомления</div>
-<div class="sp-card">
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">📳</div>
-<div class="sp-txt"><div class="sp-label">Push-уведомления</div><div class="sp-sub" id="push-status-label">Нажмите чтобы включить</div></div>
-<div class="sp-right"><label class="tog-wrap"><input id="tog-push" onchange="togglePushNotif(this.checked)" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">🕐</div>
-<div class="sp-txt"><div class="sp-label">Время напоминания</div><div class="sp-sub">Ежедневные напоминания</div></div>
-<div class="sp-right"><input id="set-notif-time" onchange="saveNotifSettings()" style="background:var(--s2);border:1px solid var(--line);color:var(--text);padding:6px 10px;border-radius:10px;font-size:.78rem;cursor:pointer" type="time" value="20:00"/></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">⏰</div>
-<div class="sp-txt"><div class="sp-label">Платежи</div><div class="sp-sub">За 3 дня до платежа</div></div>
-<div class="sp-right"><label class="tog-wrap"><input checked="" id="nt-payments" onchange="saveNotifSettings()" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">📊</div>
-<div class="sp-txt"><div class="sp-label">Бюджет</div><div class="sp-sub">При достижении порога</div></div>
-<div class="sp-right"><label class="tog-wrap"><input checked="" id="nt-budget" onchange="saveNotifSettings()" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">⚡</div>
-<div class="sp-txt"><div class="sp-label">Привычки</div><div class="sp-sub">Ежедневно в заданное время</div></div>
-<div class="sp-right"><label class="tog-wrap"><input id="nt-habits" onchange="saveNotifSettings()" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">📈</div>
-<div class="sp-txt"><div class="sp-label">Еженедельная сводка</div><div class="sp-sub">Каждое воскресенье</div></div>
-<div class="sp-right"><label class="tog-wrap"><input checked="" id="nt-weekly" onchange="saveNotifSettings()" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">🤖</div>
-<div class="sp-txt"><div class="sp-label">Советы ИИ</div><div class="sp-sub">При важных изменениях</div></div>
-<div class="sp-right"><label class="tog-wrap"><input checked="" id="nt-ai" onchange="saveNotifSettings()" type="checkbox"/><span class="tog-slider"></span></label></div>
-</div>
-<div class="sp-row">
-<div class="sp-ico" style="background:rgba(45,232,176,.1)">✉️</div>
-<div class="sp-txt">
-<div class="sp-label">Email для уведомлений</div>
-<input class="form-input" id="set-email" placeholder="your@email.com" style="margin-top:6px" type="email"/>
-<div style="display:flex;gap:7px;margin-top:7px">
-<button onclick="testEmailNotif()" style="flex:1;background:rgba(77,166,255,.1);border:1px solid rgba(77,166,255,.2);color:var(--blue);font-size:.72rem;font-weight:700;padding:7px;border-radius:10px;cursor:pointer">Тест</button>
-<button onclick="sendEmailSummary()" style="flex:1;background:rgba(45,232,176,.08);border:1px solid rgba(45,232,176,.2);color:var(--mint);font-size:.72rem;font-weight:700;padding:7px;border-radius:10px;cursor:pointer">Сводка</button>
-</div>
-</div>
-</div>
-</div>
-<div class="sp-section-title">💾 Данные</div>
-<div class="sp-card">
-<div class="sp-row clickable" onclick="exportData()">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">📤</div>
-<div class="sp-txt"><div class="sp-label">Экспорт данных</div><div class="sp-sub">Скачать все данные в JSON</div></div>
-<div class="sp-right"><span class="sp-chevron">›</span></div>
-</div>
-<div class="sp-row clickable" onclick="document.getElementById('import-file').click()">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">📥</div>
-<div class="sp-txt"><div class="sp-label">Импорт данных</div><div class="sp-sub">Восстановить из JSON</div></div>
-<div class="sp-right"><span class="sp-chevron">›</span></div>
-</div>
-<div class="sp-row clickable" onclick="confirmResetData()">
-<div class="sp-ico" style="background:rgba(255,107,107,.12)">🗑</div>
-<div class="sp-txt"><div class="sp-label" style="color:var(--coral)">Сбросить все данные</div><div class="sp-sub">Удалить всё безвозвратно</div></div>
-<div class="sp-right"><span class="sp-chevron" style="color:var(--coral)">›</span></div>
-</div>
-</div>
-<div class="sp-section-title">🤖 ИИ ассистент</div>
-<div class="sp-card">
-<div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-<div style="display:flex;align-items:center;gap:10px;width:100%">
-<div class="sp-ico" style="background:rgba(77,166,255,.12)">🔑</div>
-<div class="sp-txt" style="flex:1">
-<div class="sp-label">Anthropic API ключ</div>
-<div class="sp-sub">Для AI советов и анализа (claude-3-haiku)</div>
-</div>
-</div>
-<div style="width:100%;padding-left:44px">
-<input id="set-ai-api-key" oninput="saveAIKey(this.value)" placeholder="sk-ant-..." style="width:100%;background:var(--s2);border:1px solid var(--line);color:var(--text);padding:10px 14px;border-radius:12px;font-size:.82rem;font-family:var(--font-body);box-sizing:border-box" type="password"/>
-<div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
-              Ключ хранится локально. <a href="https://console.anthropic.com/keys" style="color:var(--blue)" target="_blank">Получить ключ →</a>
-</div>
-</div>
-<!-- AI Personality Selector -->
-<div class="ai-personality-section">
-  <div class="ai-personality-title">🎭 Роль AI-ассистента</div>
-  <div class="ai-personality-grid">
-    <div class="ai-personality-card" data-personality="conservative" onclick="selectAIPersonality('conservative')">
-      <div class="ai-personality-emoji">🏛️</div>
-      <div class="ai-personality-name">Консервативный казначей</div>
+
+<div class="sett-body">
+
+<!-- ═══ А: Финансовое ядро ═══ -->
+<div class="sett-module-label">💛 Финансовая стратегия</div>
+<div class="sett-card">
+
+  <!-- Валюта -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(45,232,176,.12);color:#2DE8B0">₽</div>
+      <div class="sett-info">
+        <div class="sett-label">Основная валюта</div>
+        <div class="sett-sub">Для расчётов и отображения</div>
+      </div>
     </div>
-    <div class="ai-personality-card" data-personality="aggressive" onclick="selectAIPersonality('aggressive')">
-      <div class="ai-personality-emoji">🚀</div>
-      <div class="ai-personality-name">Агрессивный инвестор</div>
-    </div>
-    <div class="ai-personality-card active" data-personality="coach" onclick="selectAIPersonality('coach')">
-      <div class="ai-personality-emoji">🧘</div>
-      <div class="ai-personality-name">Психолог-коуч</div>
+    <div class="sett-seg" id="currency-seg">
+      <div class="sett-seg-btn active" data-val="RUB" onclick="selectCurrency(this,'RUB')">₽</div>
+      <div class="sett-seg-btn" data-val="USD" onclick="selectCurrency(this,'USD')">$</div>
+      <div class="sett-seg-btn" data-val="EUR" onclick="selectCurrency(this,'EUR')">€</div>
+      <div class="sett-seg-btn" data-val="BYN" onclick="selectCurrency(this,'BYN')">Br</div>
     </div>
   </div>
-  <button class="ai-analyze-btn" onclick="analyzeMonthWithAI()">
+  <div class="sett-divider"></div>
+
+  <!-- Порог бюджета -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(245,200,66,.12);color:#F5C842">🎯</div>
+      <div class="sett-info">
+        <div class="sett-label">Порог предупреждения</div>
+        <div class="sett-sub">При каком % расходов предупреждать</div>
+      </div>
+    </div>
+    <div class="sett-seg" id="alert-threshold-seg">
+      <div class="sett-seg-btn" data-val="70" onclick="selectAlertThresholdNew(this,70)">70%</div>
+      <div class="sett-seg-btn" data-val="80" onclick="selectAlertThresholdNew(this,80)">80%</div>
+      <div class="sett-seg-btn active" data-val="85" onclick="selectAlertThresholdNew(this,85)">85%</div>
+      <div class="sett-seg-btn" data-val="90" onclick="selectAlertThresholdNew(this,90)">90%</div>
+      <div class="sett-seg-btn" data-val="95" onclick="selectAlertThresholdNew(this,95)">95%</div>
+    </div>
+  </div>
+  <div class="sett-divider"></div>
+
+  <!-- Норма сбережений -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(45,232,176,.12);color:#2DE8B0">🏦</div>
+      <div class="sett-info">
+        <div class="sett-label">Норма сбережений</div>
+        <div class="sett-sub">Целевой % дохода в накопления</div>
+      </div>
+    </div>
+    <div class="sett-seg" id="savings-rate-seg">
+      <div class="sett-seg-btn" data-val="10" onclick="selectSavingsRate(this,10)">10%</div>
+      <div class="sett-seg-btn" data-val="15" onclick="selectSavingsRate(this,15)">15%</div>
+      <div class="sett-seg-btn active" data-val="20" onclick="selectSavingsRate(this,20)">20%</div>
+      <div class="sett-seg-btn" data-val="30" onclick="selectSavingsRate(this,30)">30%</div>
+      <div class="sett-seg-btn" data-val="50" onclick="selectSavingsRate(this,50)">50%</div>
+    </div>
+  </div>
+  <div class="sett-divider"></div>
+
+  <!-- Ставка доходности -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(245,200,66,.12);color:#F5C842">📈</div>
+      <div class="sett-info">
+        <div class="sett-label">Ставка доходности</div>
+        <div class="sett-sub">Для калькулятора цели</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="adjustRate(-1)" class="sett-stepper-btn">−</button>
+      <span id="set-rate-display" class="sett-stepper-val"></span>
+      <button onclick="adjustRate(1)" class="sett-stepper-btn">+</button>
+    </div>
+  </div>
+  <div class="sett-divider"></div>
+
+  <!-- День сброса -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF">📅</div>
+      <div class="sett-info">
+        <div class="sett-label">Начало месяца</div>
+        <div class="sett-sub">День сброса бюджета</div>
+      </div>
+    </div>
+    <div class="sett-seg" id="budget-day-seg">
+      <div class="sett-seg-btn active" data-val="1" onclick="selectBudgetDay(this,1)">1</div>
+      <div class="sett-seg-btn" data-val="5" onclick="selectBudgetDay(this,5)">5</div>
+      <div class="sett-seg-btn" data-val="10" onclick="selectBudgetDay(this,10)">10</div>
+      <div class="sett-seg-btn" data-val="15" onclick="selectBudgetDay(this,15)">15</div>
+      <div class="sett-seg-btn" data-val="20" onclick="selectBudgetDay(this,20)">20</div>
+      <div class="sett-seg-btn" data-val="25" onclick="selectBudgetDay(this,25)">25</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ Б: Автопилот распределения ═══ -->
+<div class="sett-module-label">🤖 Автопилот распределения</div>
+<div class="sett-card">
+
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF">⚡</div>
+      <div class="sett-info">
+        <div class="sett-label">Автоматическое распределение</div>
+        <div class="sett-sub" id="ap-formula-sub">ИИ делит доход автоматически</div>
+      </div>
+    </div>
+    <label class="tog-wrap">
+      <input id="set-autopilot-enabled" onchange="saveAutopilotSettings()" type="checkbox"/>
+      <span class="tog-slider"></span>
+    </label>
+  </div>
+
+  <!-- Sliders — показываются когда включено -->
+  <div id="ap-settings-detail" style="display:none">
+    <div class="sett-divider"></div>
+    <div class="sett-sliders">
+
+      <div class="sett-slider-row">
+        <div class="sett-slider-label">
+          <span>🏠 На жизнь</span>
+          <span class="sett-slider-pct" id="ap-lbl-life">50%</span>
+        </div>
+        <input type="range" min="0" max="100" value="50" id="ap-pct-life" class="sett-range" oninput="onApSlider('life',this.value)"/>
+      </div>
+
+      <div class="sett-slider-row">
+        <div class="sett-slider-label">
+          <span>🎯 На цели</span>
+          <span class="sett-slider-pct" id="ap-lbl-goals">30%</span>
+        </div>
+        <input type="range" min="0" max="100" value="30" id="ap-pct-goals" class="sett-range" oninput="onApSlider('goals',this.value)"/>
+      </div>
+
+      <div class="sett-slider-row">
+        <div class="sett-slider-label">
+          <span>🏦 Накопления</span>
+          <span class="sett-slider-pct" id="ap-lbl-savings">10%</span>
+        </div>
+        <input type="range" min="0" max="100" value="10" id="ap-pct-savings" class="sett-range" oninput="onApSlider('savings',this.value)"/>
+      </div>
+
+      <div class="sett-slider-row">
+        <div class="sett-slider-label">
+          <span>📈 Взнос в цель</span>
+          <span class="sett-slider-pct" id="ap-lbl-goalcontrib">10%</span>
+        </div>
+        <input type="range" min="0" max="100" value="10" id="ap-pct-goalcontrib" class="sett-range" oninput="onApSlider('goalcontrib',this.value)"/>
+      </div>
+
+      <div class="sett-ap-total" id="ap-total-bar">
+        <div class="sett-ap-total-track" id="ap-total-track"></div>
+        <div class="sett-ap-total-label" id="ap-total-label">Сумма: 100%</div>
+      </div>
+      <div id="ap-pct-warning" style="display:none;font-size:.7rem;color:var(--coral);text-align:center;padding:4px 0">⚠ Сумма долей не равна 100%</div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ В: ИИ-ассистент ═══ -->
+<div class="sett-module-label">🧠 ИИ-ассистент</div>
+<div class="sett-card">
+
+  <!-- Роль -->
+  <div class="sett-label" style="padding:0 0 10px">Роль ассистента</div>
+  <div class="sett-ai-roles" id="ai-personality-grid">
+    <div class="sett-ai-role" data-personality="conservative" onclick="selectAIPersonality('conservative')">
+      <div class="sett-ai-role-ico">🏛️</div>
+      <div class="sett-ai-role-name">Казначей</div>
+    </div>
+    <div class="sett-ai-role active" data-personality="coach" onclick="selectAIPersonality('coach')">
+      <div class="sett-ai-role-ico">🧘</div>
+      <div class="sett-ai-role-name">Коуч</div>
+    </div>
+    <div class="sett-ai-role" data-personality="aggressive" onclick="selectAIPersonality('aggressive')">
+      <div class="sett-ai-role-ico">🚀</div>
+      <div class="sett-ai-role-name">Инвестор</div>
+    </div>
+  </div>
+  <div class="sett-divider" style="margin:12px 0"></div>
+
+  <!-- API Key -->
+  <div class="sett-row" style="align-items:flex-start;gap:10px">
+    <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF;margin-top:2px">🔑</div>
+    <div style="flex:1;min-width:0">
+      <div class="sett-label" style="margin-bottom:8px">
+        Anthropic API Key
+        <span id="ai-key-status" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-left:6px;vertical-align:middle"></span>
+      </div>
+      <div style="position:relative">
+        <input id="set-ai-api-key" type="password" placeholder="sk-ant-..."
+          oninput="saveAIKey(this.value);updateAIKeyStatus()"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 44px 10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
+        <button onclick="toggleAIKeyVisibility()" id="ai-key-eye" title="Показать/скрыть"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">👁</button>
+      </div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
+        Ключ хранится локально в зашифрованном виде. <a href="https://console.anthropic.com/keys" style="color:var(--blue)" target="_blank">Получить ключ →</a>
+      </div>
+    </div>
+  </div>
+  <div class="sett-divider" style="margin:12px 0"></div>
+  <button onclick="analyzeMonthWithAI()" class="sett-ai-analyze-btn">
     <span>📊</span> Проанализировать мой месяц
   </button>
+
 </div>
+
+<!-- ═══ Г: Уведомления ═══ -->
+<div class="sett-module-label">🔔 Уведомления</div>
+<div class="sett-card">
+
+  <!-- Мастер-свитч -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(45,232,176,.1);color:#2DE8B0">📳</div>
+      <div class="sett-info">
+        <div class="sett-label">Push-уведомления</div>
+        <div class="sett-sub" id="push-status-label">Нажмите чтобы включить</div>
+      </div>
+    </div>
+    <label class="tog-wrap">
+      <input id="tog-push" onchange="togglePushNotif(this.checked)" type="checkbox"/>
+      <span class="tog-slider"></span>
+    </label>
+  </div>
+  <div class="sett-divider"></div>
+
+  <!-- Время -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(45,232,176,.1);color:#2DE8B0">🕐</div>
+      <div class="sett-info">
+        <div class="sett-label">Время напоминания</div>
+      </div>
+    </div>
+    <input id="set-notif-time" onchange="saveNotifSettings()" type="time" value="20:00"
+      style="background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text);padding:7px 10px;border-radius:10px;font-size:.82rem"/>
+  </div>
+
+  <!-- Accordion: типы уведомлений -->
+  <div class="sett-divider"></div>
+  <div class="sett-row sett-accordion-header" onclick="toggleNotifAccordion()">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(255,255,255,.06);color:var(--muted)">📋</div>
+      <div class="sett-info"><div class="sett-label">Типы уведомлений</div></div>
+    </div>
+    <span id="notif-accordion-arrow" style="color:var(--muted);transition:transform .2s">›</span>
+  </div>
+  <div id="notif-accordion" style="display:none;padding:4px 0 0">
+    <div class="sett-notif-item">
+      <label class="sett-notif-chk">
+        <input id="nt-payments" onchange="saveNotifSettings()" type="checkbox" checked/>
+        <span class="sett-chk-box"></span>
+        <span>⏰ Предстоящие платежи <span style="color:var(--muted);font-size:.7rem">— за 3 дня</span></span>
+      </label>
+    </div>
+    <div class="sett-notif-item">
+      <label class="sett-notif-chk">
+        <input id="nt-budget" onchange="saveNotifSettings()" type="checkbox" checked/>
+        <span class="sett-chk-box"></span>
+        <span>📊 Превышение бюджета</span>
+      </label>
+    </div>
+    <div class="sett-notif-item">
+      <label class="sett-notif-chk">
+        <input id="nt-habits" onchange="saveNotifSettings()" type="checkbox"/>
+        <span class="sett-chk-box"></span>
+        <span>⚡ Ежедневные привычки</span>
+      </label>
+    </div>
+    <div class="sett-notif-item">
+      <label class="sett-notif-chk">
+        <input id="nt-weekly" onchange="saveNotifSettings()" type="checkbox" checked/>
+        <span class="sett-chk-box"></span>
+        <span>📈 Еженедельная сводка</span>
+      </label>
+    </div>
+    <div class="sett-notif-item">
+      <label class="sett-notif-chk">
+        <input id="nt-ai" onchange="saveNotifSettings()" type="checkbox" checked/>
+        <span class="sett-chk-box"></span>
+        <span>🤖 Советы ИИ</span>
+      </label>
+    </div>
+  </div>
+
 </div>
+
+<!-- ═══ Д: Безопасность и данные ═══ -->
+<div class="sett-module-label">🔐 Безопасность и данные</div>
+<div class="sett-card">
+
+  <!-- PIN блокировка -->
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(239,68,68,.1);color:#EF4444">🔑</div>
+      <div class="sett-info">
+        <div class="sett-label">Автоблокировка</div>
+        <div class="sett-sub">Время до блокировки PIN</div>
+      </div>
+    </div>
+    <div class="sett-seg" id="lock-timeout-seg">
+      <div class="sett-seg-btn active" data-val="0" onclick="selectLockTimeout(this,0)">Сразу</div>
+      <div class="sett-seg-btn" data-val="60" onclick="selectLockTimeout(this,60)">1 мин</div>
+      <div class="sett-seg-btn" data-val="300" onclick="selectLockTimeout(this,300)">5 мин</div>
+      <div class="sett-seg-btn" data-val="-1" onclick="selectLockTimeout(this,-1)">Никогда</div>
+    </div>
+  </div>
+  <div class="sett-divider"></div>
+
+  <div class="sett-row clickable" onclick="changePin()">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(239,68,68,.1);color:#EF4444">🔒</div>
+      <div class="sett-info"><div class="sett-label">Изменить PIN-код</div></div>
+    </div>
+    <span class="sett-chevron">›</span>
+  </div>
+  <div class="sett-divider"></div>
+
+  <!-- Данные -->
+  <div class="sett-row clickable" onclick="exportData()">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(77,166,255,.1);color:#4DA6FF">📤</div>
+      <div class="sett-info"><div class="sett-label">Экспорт данных (JSON)</div></div>
+    </div>
+    <span class="sett-chevron">›</span>
+  </div>
+  <div class="sett-divider"></div>
+
+  <div class="sett-row clickable" onclick="document.getElementById('import-file').click()">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(77,166,255,.1);color:#4DA6FF">📥</div>
+      <div class="sett-info"><div class="sett-label">Импорт данных</div></div>
+    </div>
+    <span class="sett-chevron">›</span>
+  </div>
+  <div class="sett-divider"></div>
+
+  <div class="sett-row clickable" onclick="confirmResetData()" style="color:var(--coral)">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(255,107,107,.1);color:#FF6B6B">🗑</div>
+      <div class="sett-info"><div class="sett-label" style="color:var(--coral)">Сбросить все данные</div></div>
+    </div>
+    <span class="sett-chevron" style="color:var(--coral)">›</span>
+  </div>
+
 </div>
-<div class="sp-section-title">ℹ️ О приложении</div>
-<div class="sp-card">
-<div class="sp-row"><div class="sp-ico" style="background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.2)">N</div><div class="sp-txt"><div class="sp-label">Nobile v2.0</div><div class="sp-sub">Финансы · Привычки · Рост · AES-256</div></div></div>
-<div class="sp-row clickable" onclick="closeSheet('settings');logout()">
-<div class="sp-ico" style="background:rgba(255,107,107,.1)">🚪</div>
-<div class="sp-txt"><div class="sp-label" style="color:var(--coral)">Выйти из аккаунта</div><div class="sp-sub">Вернуться на экран входа</div></div>
-<div class="sp-right"><span class="sp-chevron" style="color:var(--coral)">›</span></div>
+
+<!-- ═══ О приложении ═══ -->
+<div class="sett-module-label">ℹ️ О приложении</div>
+<div class="sett-card">
+  <div class="sett-row">
+    <div class="sett-row-left">
+      <div class="sett-ico" style="background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.2);color:var(--gold);font-weight:900;font-size:.9rem">N</div>
+      <div class="sett-info">
+        <div class="sett-label">Nobile</div>
+        <div class="sett-sub">Финансы · Привычки · Рост · AES-256</div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Нижние кнопки -->
+<div class="sett-bottom-actions">
+  <button onclick="closeSheet('settings');logoutAccount()" class="sett-logout-btn">Выйти из аккаунта</button>
 </div>
-</div>
-</div>
-</div>
+
+</div><!-- /sett-body -->
+</div><!-- /sheet -->
+</div><!-- /overlay -->
+
+
 <!-- ══ PROFILE SHEET ══ -->
 <div class="overlay" id="sheet-profile" style="align-items:flex-start">
 <div class="overlay-bg" onclick="closeSheet('profile')"></div>

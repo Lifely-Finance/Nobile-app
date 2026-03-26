@@ -5913,3 +5913,174 @@ html.is-xbox body { zoom: .8; }
   opacity: 0;
   pointer-events: none;
 }
+
+/* ══════════════════════════════════════
+   SETTINGS PAGE v2 — Glassmorphism
+══════════════════════════════════════ */
+.sett-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  position: sticky; top: 0;
+  background: rgba(13,15,20,.96);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  z-index: 10;
+}
+.sett-back-btn {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+  color: var(--text); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sett-title {
+  font-family: var(--font-head); font-size: 1rem; font-weight: 800;
+}
+.sett-body { padding: 8px 14px 48px; }
+.sett-module-label {
+  font-size: .62rem; font-weight: 700; color: rgba(255,255,255,.35);
+  text-transform: uppercase; letter-spacing: .1em;
+  padding: 16px 2px 8px;
+}
+.sett-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.sett-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 13px 14px;
+}
+.sett-row.clickable { cursor: pointer; transition: background .15s; }
+.sett-row.clickable:active { background: rgba(255,255,255,.06); }
+.sett-row-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.sett-ico {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .95rem; flex-shrink: 0;
+}
+.sett-info { min-width: 0; }
+.sett-label { font-size: .85rem; font-weight: 600; color: var(--text); }
+.sett-sub { font-size: .68rem; color: var(--muted); margin-top: 1px; }
+.sett-divider { height: 1px; background: rgba(255,255,255,.05); margin: 0 14px; }
+.sett-chevron { color: rgba(255,255,255,.25); font-size: .85rem; }
+
+/* Seg buttons */
+.sett-seg {
+  display: flex; gap: 3px; flex-shrink: 0;
+}
+.sett-seg-btn {
+  padding: 5px 9px; border-radius: 8px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+  color: var(--muted); font-size: .72rem; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.sett-seg-btn.active {
+  background: rgba(245,200,66,.12); border-color: rgba(245,200,66,.35);
+  color: var(--gold);
+}
+
+/* Stepper */
+.sett-stepper-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  color: var(--text); cursor: pointer; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.sett-stepper-val {
+  font-family: var(--font-head); font-size: .9rem; font-weight: 800;
+  min-width: 42px; text-align: center; color: var(--gold);
+}
+
+/* Autopilot sliders */
+.sett-sliders { padding: 10px 14px 14px; }
+.sett-slider-row { margin-bottom: 14px; }
+.sett-slider-label {
+  display: flex; justify-content: space-between;
+  font-size: .75rem; color: var(--muted); margin-bottom: 6px;
+}
+.sett-slider-pct { font-weight: 700; color: var(--text); }
+.sett-range {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 99px;
+  background: rgba(255,255,255,.1); outline: none; cursor: pointer;
+}
+.sett-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--gold);
+  box-shadow: 0 0 8px rgba(245,200,66,.5); cursor: pointer;
+}
+.sett-ap-total {
+  position: relative; height: 4px; border-radius: 99px;
+  background: rgba(255,255,255,.08); margin-top: 8px; overflow: hidden;
+}
+.sett-ap-total-track {
+  height: 100%; width: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, #2DE8B0, #F5C842);
+  transition: width .3s;
+}
+.sett-ap-total-label {
+  position: absolute; right: 0; top: -18px;
+  font-size: .62rem; font-weight: 700; color: var(--muted);
+}
+
+/* AI roles */
+.sett-ai-roles {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  margin-bottom: 4px;
+}
+.sett-ai-role {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 8px; border-radius: 14px;
+  background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.07);
+  cursor: pointer; transition: all .18s;
+}
+.sett-ai-role.active {
+  background: rgba(77,166,255,.1); border-color: rgba(77,166,255,.4);
+}
+.sett-ai-role-ico { font-size: 1.6rem; }
+.sett-ai-role-name { font-size: .64rem; font-weight: 700; color: var(--muted); text-align: center; }
+.sett-ai-role.active .sett-ai-role-name { color: #4DA6FF; }
+.sett-ai-analyze-btn {
+  width: 100%; padding: 11px; border-radius: 12px;
+  background: rgba(77,166,255,.1); border: 1px solid rgba(77,166,255,.25);
+  color: #4DA6FF; font-size: .82rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* Notifications accordion */
+.sett-accordion-header { cursor: pointer; }
+.sett-notif-item { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.sett-notif-item:last-child { border-bottom: none; }
+.sett-notif-chk {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .82rem; color: var(--muted); cursor: pointer;
+}
+.sett-notif-chk input { display: none; }
+.sett-chk-box {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.04);
+  transition: all .15s;
+  position: relative;
+}
+.sett-notif-chk input:checked + .sett-chk-box {
+  background: var(--blue); border-color: var(--blue);
+}
+.sett-notif-chk input:checked + .sett-chk-box::after {
+  content: '✓'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); color: #fff; font-size: .7rem; font-weight: 800;
+}
+
+/* Bottom actions */
+.sett-bottom-actions {
+  padding: 20px 0 8px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sett-logout-btn {
+  width: 100%; padding: 13px;
+  background: transparent; border: 1.5px solid rgba(255,107,107,.25);
+  color: var(--coral); font-size: .85rem; font-weight: 700; cursor: pointer;
+  border-radius: 14px;
+}
