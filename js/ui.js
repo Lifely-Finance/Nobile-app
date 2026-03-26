@@ -326,15 +326,14 @@ function renderStressIndex() {
   if (scoreEl) scoreEl.textContent = d.score;
 
   if (arc) {
-    const r = 22, circ = 2 * Math.PI * r; // ≈138.2
+    const r = 24, circ = 2 * Math.PI * r; // ≈150.8
     const filled = Math.min(Math.max(d.score, 0), 100) / 100 * circ;
     const color  = d.level === 'low' ? '#2DE8B0' : d.level === 'med' ? '#F5C842' : '#FF6B6B';
     arc.style.stroke = color;
     arc.style.filter = `drop-shadow(0 0 4px ${color}99)`;
-    // Animate after paint
     setTimeout(() => {
       arc.style.strokeDasharray = `${filled.toFixed(1)} ${circ.toFixed(1)}`;
-    }, 80);
+    }, 150);
   }
 
   // ── Apply glow to header ──────────────────────────────────────────
@@ -799,7 +798,7 @@ function renderGrowth() {
       `<div class="ring-cell">${drawRing(stats.savingsRate*5, srColor, 86, 7, stats.savingsRate+'%', 'сбережений')}<div class="ring-label">Норма сбережений</div></div>` +
       `<div class="ring-cell">${drawRing(goalPct, goalColor, 100, 8, goalPct+'%', 'к цели')}<div class="ring-label">Прогресс к цели</div></div>` +
       `<div class="ring-cell">${drawRing(score||0, scoreColor, 86, 7, score !== null ? score : '—', 'баллов')}<div class="ring-label">Финздоровье</div></div>`;
-    setTimeout(() => _animateRings(ringsEl), 0);
+    setTimeout(() => _animateRings(ringsEl), 150);
   }
 
   // ② Budget
@@ -3782,12 +3781,15 @@ function showAchievementPopup(ach) {
 
   window._currentAch = ach;
 
-  // Update pill
+  // Remove any dynamically-injected old badge elements (legacy cleanup)
+  card.querySelectorAll('.ach-xp-badge').forEach(el => el.remove());
+
+  // Update pill text
   if (pillEl) {
     pillEl.textContent = ach.xp ? `+${ach.xp} XP` : '🏆 Достигнуто';
   }
 
-  // Rays SVG — 16 lines from center
+  // Rays SVG — centered behind icon (~top 28% of content area)
   const rays = Array.from({length: 16}, (_, i) => {
     const a = (i / 16) * 360, len = 60 + (i % 3) * 30;
     const x = 50 + Math.cos(a * Math.PI / 180) * len;
@@ -3811,6 +3813,17 @@ function showAchievementPopup(ach) {
       glowEl.style.opacity = '1';
       iconEl.className = 'ach-popup-icon-anim';
       _launchConfetti(card);
+      // Position rays center behind icon after render
+      if (iconEl && raysEl) {
+        const cardRect = card.getBoundingClientRect();
+        const iconRect = iconEl.getBoundingClientRect();
+        if (cardRect.height > 0) {
+          const pct = ((iconRect.top + iconRect.height / 2) - cardRect.top) / cardRect.height * 100;
+          raysEl.style.top = pct.toFixed(1) + '%';
+          const glowBg = glowEl.querySelector('div');
+          if (glowBg) glowBg.style.top = pct.toFixed(1) + '%';
+        }
+      }
     }, 120);
   });
 
