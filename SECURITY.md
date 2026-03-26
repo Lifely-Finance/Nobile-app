@@ -4,7 +4,7 @@
 Our security policy aims to provide transparency in how we handle security issues within our organization.
 
 ## Vulnerability Reporting
-If you discover a vulnerability in our application, please report it to us via email at security@lifely-finance.com. We will respond promptly and manage the issue securely and efficiently.
+If you discover a vulnerability in our application, please report it to us via email at nobile.finance@gmail.com. We will respond promptly and manage the issue securely and efficiently.
 
 ## Supported Versions
 We support the following versions of our application:
