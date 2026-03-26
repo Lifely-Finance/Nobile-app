@@ -317,22 +317,27 @@ function renderStressIndex() {
   const el = document.getElementById('stress-index-block');
   if (el) el.style.display = 'none';
 
-  // Update the mini-indicator inside the hero block
   const d = calcFinancialStress();
   _lastStressData = d;
 
-  const pill = document.getElementById('hero-stress-pill');
-  const fill = document.getElementById('hero-stress-fill');
+  // ── Update hero ring ──────────────────────────────────────────────
+  const scoreEl = document.getElementById('hero-stress-score');
+  const arc     = document.getElementById('hero-stress-arc');
+  if (scoreEl) scoreEl.textContent = d.score;
 
-  if (!pill || !fill) return;
+  if (arc) {
+    const r = 22, circ = 2 * Math.PI * r; // ≈138.2
+    const filled = Math.min(Math.max(d.score, 0), 100) / 100 * circ;
+    const color  = d.level === 'low' ? '#2DE8B0' : d.level === 'med' ? '#F5C842' : '#FF6B6B';
+    arc.style.stroke = color;
+    arc.style.filter = `drop-shadow(0 0 4px ${color}99)`;
+    // Animate after paint
+    setTimeout(() => {
+      arc.style.strokeDasharray = `${filled.toFixed(1)} ${circ.toFixed(1)}`;
+    }, 80);
+  }
 
-  const levelTxt = d.level === 'low' ? 'НИЗКИЙ' : d.level === 'med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
-  pill.textContent = levelTxt;
-  pill.className = 'hero-stress-pill ' + d.level;
-  fill.className  = 'hero-stress-bar-fill ' + d.level;
-  fill.style.width = Math.max(4, Math.min(100, d.score)) + '%';
-
-  // Apply glow effect to header and body based on stress level
+  // ── Apply glow to header ──────────────────────────────────────────
   const hdr  = document.querySelector('.hdr');
   const body = document.body;
   if (hdr) {
@@ -720,7 +725,7 @@ function drawRing(pct, color, size, stroke, textVal, subVal) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const filled = Math.min(Math.max(pct, 0), 100);
-  const dash = filled / 100 * circ;
+  const dash = (filled / 100 * circ).toFixed(1);
   const fs = size > 90 ? '1rem' : size > 76 ? '.82rem' : '.7rem';
   const animId = 'ring-' + Math.random().toString(36).substr(2, 9);
   return `<div class="ring-wrap" style="width:${size}px;height:${size}px">
@@ -728,31 +733,29 @@ function drawRing(pct, color, size, stroke, textVal, subVal) {
       <defs>
         <filter id="glow-${animId}" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="${stroke}"/>
       <circle id="${animId}" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
         stroke-dasharray="0 ${circ.toFixed(1)}" stroke-dashoffset="${(circ/4).toFixed(1)}"
         stroke-linecap="round" filter="url(#glow-${animId})"
+        data-target="${dash} ${circ.toFixed(1)}"
         style="transition:stroke-dasharray 1.2s cubic-bezier(.34,1.56,.64,1)"/>
     </svg>
     <div class="ring-inner">
       <div class="ring-val" style="font-size:${fs};color:${color};text-shadow:0 0 10px ${color}66">${textVal}</div>
       ${subVal ? `<div class="ring-sub">${subVal}</div>` : ''}
     </div>
-  </div>
-  <script>
-    (function(){
-      setTimeout(function(){
-        const c = document.getElementById('${animId}');
-        if(c) c.style.strokeDasharray = '${dash.toFixed(1)} ${circ.toFixed(1)}';
-      }, 100);
-    })();
-  <\/script>`;
+  </div>`;
+}
+
+function _animateRings(container) {
+  const circles = (container || document).querySelectorAll('circle[data-target]');
+  circles.forEach(c => {
+    const target = c.dataset.target;
+    setTimeout(() => { c.style.strokeDasharray = target; }, 80);
+  });
 }
 
 function getLast6Months() {
@@ -796,6 +799,7 @@ function renderGrowth() {
       `<div class="ring-cell">${drawRing(stats.savingsRate*5, srColor, 86, 7, stats.savingsRate+'%', 'сбережений')}<div class="ring-label">Норма сбережений</div></div>` +
       `<div class="ring-cell">${drawRing(goalPct, goalColor, 100, 8, goalPct+'%', 'к цели')}<div class="ring-label">Прогресс к цели</div></div>` +
       `<div class="ring-cell">${drawRing(score||0, scoreColor, 86, 7, score !== null ? score : '—', 'баллов')}<div class="ring-label">Финздоровье</div></div>`;
+    setTimeout(() => _animateRings(ringsEl), 0);
   }
 
   // ② Budget
@@ -3766,36 +3770,32 @@ function showNextAchievementPopup() {
 }
 
 function showAchievementPopup(ach) {
-  const popup = document.getElementById('achievement-popup');
-  const bg    = document.getElementById('ach-popup-bg');
-  const card  = document.getElementById('ach-popup-card');
+  const popup  = document.getElementById('achievement-popup');
+  const bg     = document.getElementById('ach-popup-bg');
+  const card   = document.getElementById('ach-popup-card');
   const iconEl = document.getElementById('ach-popup-icon');
   const nameEl = document.getElementById('ach-popup-name');
   const descEl = document.getElementById('ach-popup-desc');
   const glowEl = document.getElementById('ach-popup-glow');
   const raysEl = document.getElementById('ach-rays');
+  const pillEl = document.getElementById('ach-xp-pill');
 
   window._currentAch = ach;
 
-  // Rays SVG — 16 lines rotating
-  const rays = Array.from({length:16}, (_,i) => {
-    const a = (i/16)*360, len = 60 + (i%3)*30;
-    const x = 50 + Math.cos(a*Math.PI/180)*len, y = 50 + Math.sin(a*Math.PI/180)*len;
-    return `<line x1="50%" y1="50%" x2="${x}%" y2="${y}%" stroke="rgba(245,200,66,${.05+i%3*.06})" stroke-width="${1+i%2}"/>`;
+  // Update pill
+  if (pillEl) {
+    pillEl.textContent = ach.xp ? `+${ach.xp} XP` : '🏆 Достигнуто';
+  }
+
+  // Rays SVG — 16 lines from center
+  const rays = Array.from({length: 16}, (_, i) => {
+    const a = (i / 16) * 360, len = 60 + (i % 3) * 30;
+    const x = 50 + Math.cos(a * Math.PI / 180) * len;
+    const y = 50 + Math.sin(a * Math.PI / 180) * len;
+    return `<line x1="50%" y1="50%" x2="${x}%" y2="${y}%" stroke="rgba(245,200,66,${.05 + i % 3 * .06})" stroke-width="${1 + i % 2}"/>`;
   }).join('');
   raysEl.innerHTML = `<svg width="100%" height="100%" style="position:absolute;inset:0;overflow:visible">${rays}</svg>`;
   raysEl.style.animation = 'achRaysSpin 12s linear infinite';
-
-  // Inject XP badge into card (after desc)
-  let xpBadge = descEl.nextElementSibling;
-  if (!xpBadge || !xpBadge.classList.contains('ach-xp-badge')) {
-    xpBadge = document.createElement('div');
-    xpBadge.className = 'ach-xp-badge';
-    xpBadge.style.cssText = 'display:inline-block;margin:10px auto 0;padding:5px 14px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:20px;font-size:.75rem;font-weight:800;color:var(--gold)';
-    descEl.after(xpBadge);
-  }
-  xpBadge.textContent = ach.xp ? '+' + ach.xp + ' XP' : '🏆 Достигнуто';
-  xpBadge.style.transform = 'translateY(-4px)';
 
   iconEl.textContent = ach.icon;
   nameEl.textContent = ach.name;
@@ -3878,25 +3878,18 @@ function showAchievementDetail(id) {
   if (ach) showAchievementPopup(ach);
 }
 
-function shareAchievement(platform) {
+function shareAchievementNative() {
   const ach = window._currentAch;
   if (!ach) return;
-  const text = `🏆 Я получил достижение "${ach.name}" в приложении Nobile! ${ach.icon}\n${ach.desc || ''}\nФинансовый трекер: попробуй сам 💪`;
-  const encoded = encodeURIComponent(text);
-  if (platform === 'telegram') {
-    window.open(`https://t.me/share/url?url=https://nobile.app&text=${encoded}`, '_blank');
-  } else if (platform === 'vk') {
-    window.open(`https://vk.com/share.php?title=${encoded}`, '_blank');
-  } else if (platform === 'copy') {
-    navigator.clipboard?.writeText(text).then(() => {
-      const btn = document.getElementById('ach-share-copy');
-      const orig = btn.innerHTML;
-      btn.innerHTML = '✅ Скопировано';
-      btn.style.color = 'var(--mint)';
-      setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
-    });
+  const text = `🏆 Получил достижение «${ach.name}» в Nobile! ${ach.icon}\n${ach.desc || ''}\nФинансовый трекер для роста 💪`;
+  if (navigator.share) {
+    navigator.share({ title: 'Nobile — достижение', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => showToast('✅ Текст скопирован')).catch(() => {});
   }
 }
+function shareAchievement() { shareAchievementNative(); }
+
 
 function saveSettings() {
   const name = document.getElementById('set-name').value.trim();
