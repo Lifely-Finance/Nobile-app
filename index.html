@@ -19,6 +19,21 @@
 <link rel="stylesheet" href="index_nobile_v4.css">
 
 </head>
+<script>
+// Register Service Worker for push notifications
+if ('serviceWorker' in navigator) {
+  window._swReg = null;
+  navigator.serviceWorker.register('./sw.js', { scope: './' })
+    .then(reg => {
+      window._swReg = reg;
+      // Re-schedule notifications after SW ready
+      navigator.serviceWorker.ready.then(() => {
+        try { if (typeof scheduleNotifications === 'function') scheduleNotifications(); } catch(e) {}
+      });
+    })
+    .catch(e => console.warn('SW registration failed:', e));
+}
+</script>
 <body>
 <!-- ══ LOTTIE PLAYER ══ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
@@ -1538,7 +1553,7 @@
   <div class="sett-divider"></div>
 
   <!-- Порог бюджета -->
-  <div class="sett-row">
+  <div class="sett-row sett-row-stack">
     <div class="sett-row-left">
       <div class="sett-ico" style="background:rgba(245,200,66,.12);color:#F5C842">🎯</div>
       <div class="sett-info">
@@ -1557,7 +1572,7 @@
   <div class="sett-divider"></div>
 
   <!-- Норма сбережений -->
-  <div class="sett-row">
+  <div class="sett-row sett-row-stack">
     <div class="sett-row-left">
       <div class="sett-ico" style="background:rgba(45,232,176,.12);color:#2DE8B0">🏦</div>
       <div class="sett-info">
@@ -1593,7 +1608,7 @@
   <div class="sett-divider"></div>
 
   <!-- День сброса -->
-  <div class="sett-row">
+  <div class="sett-row sett-row-stack">
     <div class="sett-row-left">
       <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF">📅</div>
       <div class="sett-info">
@@ -1684,7 +1699,7 @@
 <div class="sett-card">
 
   <!-- Роль -->
-  <div class="sett-label" style="padding:0 0 10px">Роль ассистента</div>
+  <div class="sett-label" style="padding:12px 14px 8px;font-size:.72rem;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em">Роль ассистента</div>
   <div class="sett-ai-roles" id="ai-personality-grid">
     <div class="sett-ai-role" data-personality="conservative" onclick="selectAIPersonality('conservative')">
       <div class="sett-ai-role-ico">🏛️</div>
@@ -1814,7 +1829,7 @@
 <div class="sett-card">
 
   <!-- PIN блокировка -->
-  <div class="sett-row">
+  <div class="sett-row sett-row-stack">
     <div class="sett-row-left">
       <div class="sett-ico" style="background:rgba(239,68,68,.1);color:#EF4444">🔑</div>
       <div class="sett-info">

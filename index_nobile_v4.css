@@ -5951,10 +5951,17 @@ html.is-xbox body { zoom: .8; }
 .sett-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 13px 14px;
+  flex-wrap: wrap;
 }
 .sett-row.clickable { cursor: pointer; transition: background .15s; }
 .sett-row.clickable:active { background: rgba(255,255,255,.06); }
 .sett-row-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+/* Rows where seg is wide — stack vertically */
+.sett-row.sett-row-stack {
+  flex-direction: column; align-items: flex-start; gap: 8px;
+}
+.sett-row.sett-row-stack .sett-row-left { width: 100%; }
+.sett-row.sett-row-stack .sett-seg { flex-wrap: wrap; }
 .sett-ico {
   width: 32px; height: 32px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
