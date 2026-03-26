@@ -47,5 +47,4 @@ A: Contact details can be found below.
 
 ## Contact
 For any inquiries, please reach out:
-- Email: support@lifely-finance.com
-- Website: [Lifely Finance](https://www.lifely-finance.com)
+- Email: nobile.finance@gmail.com
