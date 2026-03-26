@@ -3390,6 +3390,7 @@ function openSettings() {
   if (!DB.settings) DB.settings = {};
   // Load AI key into field
   loadAIKeyField();
+  updateAIKeyStatus();
   // Security
   setSegActive('lock-timeout-seg', DB.settings.lockTimeout ?? 0);
   // Display
@@ -3414,6 +3415,17 @@ function openSettings() {
     const el = document.getElementById('nt-' + k);
     if (el) el.checked = DB.settings['nt_' + k] !== false;
   });
+  // AI personality
+  const personality = DB.settings.aiPersonality || 'coach';
+  document.querySelectorAll('.sett-ai-role').forEach(el => {
+    el.classList.toggle('active', el.dataset.personality === personality);
+  });
+  // Autopilot toggle + sliders
+  const apEl = document.getElementById('set-autopilot-enabled');
+  if (apEl) apEl.checked = !!DB.settings.autopilotEnabled;
+  const detail = document.getElementById('ap-settings-detail');
+  if (detail) detail.style.display = DB.settings.autopilotEnabled ? 'block' : 'none';
+  syncApSliders();
   openSheet('settings');
 }
 
@@ -5364,3 +5376,117 @@ function dismissAlert(i) {
   const _origNav = window.showPage || null;
 
 })();
+
+/* ══════════════════════════════════════
+   SETTINGS v2 — helper functions
+══════════════════════════════════════ */
+
+// Toggle API key visibility
+function toggleAIKeyVisibility() {
+  const inp = document.getElementById('set-ai-api-key');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// Show green dot if key looks valid (starts with sk-ant-)
+function updateAIKeyStatus() {
+  const key = getAIKey();
+  const dot = document.getElementById('ai-key-status');
+  if (!dot) return;
+  dot.style.background = key && key.startsWith('sk-ant-') ? '#2DE8B0' : 'var(--dim)';
+}
+
+// Select AI personality
+function selectAIPersonality(personality) {
+  if (!DB.settings) DB.settings = {};
+  DB.settings.aiPersonality = personality;
+  saveDB();
+  document.querySelectorAll('.sett-ai-role').forEach(el => {
+    el.classList.toggle('active', el.dataset.personality === personality);
+  });
+  // also sync old grid if it exists
+  document.querySelectorAll('.ai-personality-card').forEach(el => {
+    el.classList.toggle('active', el.dataset.personality === personality);
+  });
+  showToast('🎭 Роль: ' + {conservative:'Казначей',aggressive:'Инвестор',coach:'Коуч'}[personality]);
+}
+
+// Notification accordion
+function toggleNotifAccordion() {
+  const el = document.getElementById('notif-accordion');
+  const arrow = document.getElementById('notif-accordion-arrow');
+  if (!el) return;
+  const open = el.style.display === 'none' || el.style.display === '';
+  el.style.display = open ? 'block' : 'none';
+  if (arrow) arrow.style.transform = open ? 'rotate(90deg)' : '';
+}
+
+// Autopilot sliders — proportional resize of others
+function onApSlider(key, rawVal) {
+  const keys = ['life','goals','savings','goalcontrib'];
+  const vals = {};
+  keys.forEach(k => {
+    vals[k] = parseInt(document.getElementById('ap-pct-' + k)?.value) || 0;
+  });
+  vals[key] = parseInt(rawVal);
+
+  // Clamp total to 100 by shrinking others proportionally
+  const sum = keys.reduce((s,k) => s + vals[k], 0);
+  if (sum !== 100) {
+    const others = keys.filter(k => k !== key);
+    const otherSum = others.reduce((s,k) => s + vals[k], 0);
+    const diff = sum - 100;
+    if (otherSum > 0) {
+      others.forEach(k => {
+        vals[k] = Math.max(0, Math.round(vals[k] - diff * (vals[k] / otherSum)));
+      });
+    }
+    // Fix rounding
+    const newSum = keys.reduce((s,k) => s + vals[k], 0);
+    if (newSum !== 100) vals[others[0]] += (100 - newSum);
+  }
+
+  keys.forEach(k => {
+    const inp = document.getElementById('ap-pct-' + k);
+    const lbl = document.getElementById('ap-lbl-' + k);
+    if (inp) inp.value = vals[k];
+    if (lbl) lbl.textContent = vals[k] + '%';
+  });
+
+  // Update total bar
+  const total = keys.reduce((s,k) => s + vals[k], 0);
+  const track = document.getElementById('ap-total-track');
+  const label = document.getElementById('ap-total-label');
+  const warn  = document.getElementById('ap-pct-warning');
+  if (track) track.style.width = Math.min(100, total) + '%';
+  if (track) track.style.background = total === 100 ? 'linear-gradient(90deg,#2DE8B0,#F5C842)' : '#FF6B6B';
+  if (label) { label.textContent = 'Сумма: ' + total + '%'; label.style.color = total === 100 ? 'var(--mint)' : 'var(--coral)'; }
+  if (warn) warn.style.display = total !== 100 ? 'block' : 'none';
+
+  // Update formula subtitle
+  const sub = document.getElementById('ap-formula-sub');
+  if (sub) sub.textContent = `Формула: ${vals.life}/${vals.goals}/${vals.savings}/${vals.goalcontrib}`;
+
+  saveAutopilotSettings();
+}
+
+// Sync autopilot sliders from DB on open
+function syncApSliders() {
+  if (!DB.settings) return;
+  const ap = DB.settings.autopilot || {};
+  const map = {life: ap.life||50, goals: ap.goals||30, savings: ap.savings||10, goalcontrib: ap.goalContrib||10};
+  Object.entries(map).forEach(([k,v]) => {
+    const inp = document.getElementById('ap-pct-' + k);
+    const lbl = document.getElementById('ap-lbl-' + k);
+    if (inp) inp.value = v;
+    if (lbl) lbl.textContent = v + '%';
+  });
+  const total = Object.values(map).reduce((s,v) => s+v, 0);
+  const track = document.getElementById('ap-total-track');
+  const label = document.getElementById('ap-total-label');
+  if (track) { track.style.width = '100%'; track.style.background = total===100?'linear-gradient(90deg,#2DE8B0,#F5C842)':'#FF6B6B'; }
+  if (label) { label.textContent = 'Сумма: ' + total + '%'; }
+  const sub = document.getElementById('ap-formula-sub');
+  if (sub) sub.textContent = `Формула: ${map.life}/${map.goals}/${map.savings}/${map.goalcontrib}`;
+}
+
