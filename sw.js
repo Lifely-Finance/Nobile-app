@@ -1,144 +1,181 @@
-/* Nobile Service Worker v2 — push, offline cache, rich notifications */
-const CACHE_NAME = 'nobile-v2';
-const ASSETS = [
-  './', './index.html', './index_nobile_v4.css',
-  './js/db.js', './js/logic.js', './js/ui.js', './js/main.js',
-  './icons/nobile-logo-192.png', './icons/nobile-logo-512.png'
+/* =====================================================
+   NOBILE SERVICE WORKER v4.2.2
+   ✓ Offline caching
+   ✓ Scheduled notifications
+   ✓ Deep-link navigation on notification tap
+   ===================================================== */
+
+const SW_VERSION = '4.2.2';
+const CACHE_NAME = `nobile-cache-${SW_VERSION}`;
+
+/* ── Assets to pre-cache ── */
+const PRECACHE = [
+  './',
+  './index.html',
+  './index_nobile_v4.css',
+  './js/db.js',
+  './js/logic.js',
+  './js/ui.js',
+  './js/main.js',
+  './icons/nobile-logo-192.png',
+  './icons/nobile-logo-512.png',
+  './icons/nobile-notification.png',
+  './icons/nobile-notification-large.png',
 ];
 
-// Monochrome badge SVG (white N on transparent — Android shows as tinted)
-const BADGE_SVG = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='18' fill='white'/><text x='50%' y='72' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='64' fill='black'>N</text></svg>`;
+/* ── Notification icon paths ── */
+const NOTIF_ICON  = './icons/nobile-notification-large.png';
+const NOTIF_BADGE = './icons/nobile-notification.png';
 
-const ICON = './icons/nobile-logo-192.png';
-
-/* ── Install & Activate ── */
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).catch(() => {})
+/* ─────────────────────────────────────────────────
+   INSTALL – cache assets
+───────────────────────────────────────────────── */
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE).catch(() => {}))
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+/* ─────────────────────────────────────────────────
+   ACTIVATE – clean old caches
+───────────────────────────────────────────────── */
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
+    )
   );
+  self.clients.claim();
 });
 
-/* ── Fetch — network first, fallback to cache ── */
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request)
-      .then(r => {
-        if (r.ok) {
-          const clone = r.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, clone)).catch(() => {});
-        }
-        return r;
+/* ─────────────────────────────────────────────────
+   FETCH – network-first, fall back to cache
+───────────────────────────────────────────────── */
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    fetch(event.request)
+      .then(res => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then(c => c.put(event.request, copy));
+        return res;
       })
-      .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
+      .catch(() => caches.match(event.request))
   );
 });
 
-/* ── Message from main thread ── */
-self.addEventListener('message', e => {
-  if (!e.data) return;
+/* ─────────────────────────────────────────────────
+   MESSAGE – main thread → SW commands
+───────────────────────────────────────────────── */
+self.addEventListener('message', event => {
+  const { type, payload } = event.data || {};
 
-  if (e.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, tag, category, amount, date } = e.data;
-
-    const options = buildNotifOptions(tag, body, category, amount, date);
-    e.waitUntil(self.registration.showNotification(title, options));
-  }
-
-  if (e.data.type === 'SCHEDULE_CHECK') {
-    // Periodic check triggered by main thread keepalive
-    e.waitUntil(checkAndNotify(e.data.payload));
+  switch (type) {
+    case 'SCHEDULE_NOTIFICATIONS':
+      scheduleAllNotifications(payload);
+      break;
+    case 'CANCEL_NOTIFICATIONS':
+      cancelAll();
+      break;
+    case 'SEND_PUSH':
+      showNotification(payload.title, payload.body, payload.tag, payload.deeplink, payload.actions);
+      break;
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
   }
 });
 
-/* ── Build rich notification options ── */
-function buildNotifOptions(tag, body, category, amount, date) {
-  // Category-specific accent colors and actions
-  const categoryMap = {
-    'payment':  { color: '#FF6B6B', actions: [{ action: 'open', title: '📋 Открыть' }, { action: 'dismiss', title: 'Позже' }] },
-    'habit':    { color: '#4DA6FF', actions: [{ action: 'open', title: '⚡ Отметить' }, { action: 'dismiss', title: 'Позже' }] },
-    'budget':   { color: '#F5C842', actions: [{ action: 'open', title: '📊 Посмотреть' }, { action: 'dismiss', title: 'ОК' }] },
-    'weekly':   { color: '#2DE8B0', actions: [{ action: 'open', title: '📈 Открыть' }] },
-    'welcome':  { color: '#4DA6FF', actions: [{ action: 'open', title: '🎉 Открыть' }] },
-    'default':  { color: '#4DA6FF', actions: [{ action: 'open', title: 'Открыть' }] }
-  };
-  const cat = categoryMap[category] || categoryMap['default'];
+/* ─────────────────────────────────────────────────
+   NOTIFICATION CLICK – deep-link navigation
+───────────────────────────────────────────────── */
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
 
-  return {
-    body,
-    tag:   tag || 'nobile-' + (category || 'default'),
-    icon:  ICON,
-    badge: BADGE_SVG,
-    image: category === 'weekly' ? undefined : undefined, // placeholder for future rich images
-    vibrate: category === 'payment' ? [200, 100, 200, 100, 400] : [150, 80, 150],
-    requireInteraction: category === 'payment',
-    silent: false,
-    actions: cat.actions,
-    data: { category, amount, date, url: './' },
-    // Android: these show in the notification shade
-    timestamp: Date.now(),
-    renotify: false
-  };
-}
+  const deeplink = event.notification.data?.deeplink || '';
+  const actionId = event.action;
 
-/* ── Notification click ── */
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
+  // Handle action buttons
+  let targetDeeplink = deeplink;
+  if (actionId === 'open_section') {
+    targetDeeplink = event.notification.data?.actionDeeplink || deeplink;
+  } else if (actionId === 'dismiss') {
+    return; // Just close
+  }
 
-  const action = e.action;
-  const data   = e.notification.data || {};
-
-  e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      // Focus existing window or open new
-      const existing = list.find(c => c.url && c.url.includes('nobile'));
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      // Find existing open window
+      const existing = clients.find(c => c.url && c.url.includes('index.html') || c.url.endsWith('/'));
       if (existing) {
         existing.focus();
-        // Post message to navigate if needed
-        existing.postMessage({ type: 'NOTIF_CLICK', category: data.category, action });
+        if (targetDeeplink) {
+          existing.postMessage({ type: 'NAVIGATE', deeplink: targetDeeplink });
+        }
         return;
       }
-      return clients.openWindow(data.url || './');
+      // Open new window
+      const url = self.registration.scope + (targetDeeplink ? `?deeplink=${encodeURIComponent(targetDeeplink)}` : '');
+      return self.clients.openWindow(url);
     })
   );
 });
 
-/* ── Notification close ── */
-self.addEventListener('notificationclose', e => {
-  // Analytics placeholder
+/* ─────────────────────────────────────────────────
+   PUSH (from server – future use)
+───────────────────────────────────────────────── */
+self.addEventListener('push', event => {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    event.waitUntil(
+      showNotification(data.title, data.body, data.tag || 'push', data.deeplink, data.actions)
+    );
+  } catch(e) {}
 });
 
-/* ── Background check (called via message) ── */
-async function checkAndNotify(payload) {
-  if (!payload) return;
-  const { recurringPayments, todayKey } = payload;
+/* ─────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────── */
+function showNotification(title, body, tag = 'nobile', deeplink = '', actions = []) {
+  return self.registration.showNotification(title, {
+    body,
+    icon:  NOTIF_ICON,
+    badge: NOTIF_BADGE,
+    tag,
+    data:  { deeplink },
+    actions: actions.length ? actions : [
+      { action: 'open_section', title: '→ Открыть' },
+      { action: 'dismiss',      title: 'Закрыть' },
+    ],
+    requireInteraction: false,
+    silent: false,
+    vibrate: [200, 100, 200],
+  });
+}
 
-  if (!recurringPayments) return;
+/* ─────────────────────────────────────────────────
+   SCHEDULED NOTIFICATIONS (alarm-based via postMessage)
+   The main thread sends schedules; SW stores them and 
+   fires via setTimeout chains kept alive in SW.
+───────────────────────────────────────────────── */
+let _timers = [];
 
-  const today = new Date();
-  recurringPayments.forEach(r => {
-    if (!r || !r.id) return;
-    const due = new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth);
-    const diff = Math.round((due - today) / 86400000);
-    if (diff >= 0 && diff <= 3) {
-      const when = diff === 0 ? 'сегодня' : `через ${diff} дн.`;
-      self.registration.showNotification(
-        `⏰ Платёж: ${r.name}`,
-        buildNotifOptions(
-          `payment-${r.id}`,
-          `${(+r.amount).toLocaleString('ru')} ₽ — ${when} (${r.dayOfMonth} числа)`,
-          'payment', r.amount, r.dayOfMonth
-        )
-      );
-    }
+function cancelAll() {
+  _timers.forEach(t => clearTimeout(t));
+  _timers = [];
+}
+
+function scheduleAllNotifications(schedule = []) {
+  cancelAll();
+  const now = Date.now();
+  schedule.forEach(item => {
+    const delay = item.ts - now;
+    if (delay < 0) return;
+    const t = setTimeout(() => {
+      showNotification(item.title, item.body, item.tag, item.deeplink, item.actions || []);
+    }, delay);
+    _timers.push(t);
   });
 }
