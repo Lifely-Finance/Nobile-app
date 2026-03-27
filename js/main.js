@@ -7,20 +7,6 @@
         document.querySelectorAll('.hab-swipe-wrap.swiped').forEach(w => w.classList.remove('swiped'));
       }
     });
-
-    const profileBtn = document.getElementById('btn-profile');
-    if (profileBtn) {
-      profileBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const menu = document.getElementById('prof-menu');
-        if (menu) menu.classList.toggle('open');
-      });
-    }
-
-    document.addEventListener('click', function () {
-      const menu = document.getElementById('prof-menu');
-      if (menu) menu.classList.remove('open');
-    });
   }
 
   function initApp() {

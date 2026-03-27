@@ -510,6 +510,30 @@ function toggleHabit(habitId, dateStr) {
   renderAll();
 }
 
+// toggleHabitToday — used on the Today page: slide-out completed habit, slide in next
+function toggleHabitToday(habitId, dateStr, triggerEl) {
+  const h = DB.habits.find(h => h.id === habitId);
+  if (!h) return;
+  if (!h.completions) h.completions = {};
+  const wasDone = !!h.completions[dateStr];
+  h.completions[dateStr] = !wasDone;
+  if (!h.completions[dateStr]) delete h.completions[dateStr];
+  saveDB();
+  window._habAllDoneAnimating = false;
+  checkDailyChallengeAuto();
+
+  // Animate slide-out only when marking as DONE (not undoing)
+  if (!wasDone) {
+    const card = triggerEl ? triggerEl.closest('.hab-today-item') : null;
+    if (card) {
+      card.classList.add('fly-out');
+      setTimeout(() => renderAll(), 370);
+      return;
+    }
+  }
+  renderAll();
+}
+
 function getHabitStreak(habit) {
   let streak = 0, d = new Date();
   while (true) {
@@ -3964,8 +3988,6 @@ async function afterAuthSuccess() {
   loadCurrency();
   setTimeout(loadAIAdvice, 800);
   checkOnboarding();
-  // ── Deep-link: navigate to the section requested by notification tap
-  setTimeout(() => checkPendingDeeplink?.(), 700);
   setTimeout(() => {
     const ns = getNotifSettings?.() || {};
     if (ns.pushEnabled && Notification.permission === 'granted') scheduleNotifications?.();
@@ -3977,19 +3999,15 @@ async function afterAuthSuccess() {
 // PWA setup: generate manifest that uses the real app logo
 function setupPWA() {
   try {
-    const icon192  = './icons/nobile-logo-192.png';
-    const icon512  = './icons/nobile-logo-512.png';
+    const icon192 = './icons/nobile-logo-192.png';
+    const icon512 = './icons/nobile-logo-512.png';
     const apple180 = './icons/nobile-logo-180.png';
-    const iconBadge = './icons/nobile-notification.png';        // 96×96 monochrome status-bar icon
-    const iconNotif = './icons/nobile-notification-large.png';  // 192×192 notification icon
     const manifest = {
       name: 'Nobile', short_name: 'Nobile', start_url: './',
-      display: 'standalone', background_color: '#0d0f14', theme_color: '#0d0f14',
+      display: 'standalone', background_color: '#000000', theme_color: '#000000',
       icons: [
-        { src: iconBadge, sizes: '96x96',   type: 'image/png', purpose: 'monochrome' },
-        { src: iconNotif, sizes: '192x192',  type: 'image/png', purpose: 'any' },
-        { src: icon192,  sizes: '192x192',  type: 'image/png', purpose: 'any maskable' },
-        { src: icon512,  sizes: '512x512',  type: 'image/png', purpose: 'any maskable' }
+        { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
       ]
     };
     const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
@@ -4051,19 +4069,31 @@ document.addEventListener('click', e => {
   }
 });
 
-// Header buttons
-// settings button removed from header; opened via profile dropdown
+// Header profile menu — wired after DOM is ready
+(function() {
+  function wireProfileMenu() {
+    const btn  = document.getElementById('btn-profile');
+    const menu = document.getElementById('prof-menu');
+    if (!btn || !menu) return;
 
-// profile menu wired below
-document.getElementById('btn-profile').addEventListener('click', function(e) {
-  e.stopPropagation();
-  const menu = document.getElementById('prof-menu');
-  if (menu) menu.classList.toggle('open');
-});
-document.addEventListener('click', function() {
-  const menu = document.getElementById('prof-menu');
-  if (menu) menu.classList.remove('open');
-});
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#btn-profile')) {
+        menu.classList.remove('open');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireProfileMenu);
+  } else {
+    wireProfileMenu();
+  }
+})();
 function closeProfMenu() {
   const menu = document.getElementById('prof-menu');
   if (menu) menu.classList.remove('open');
@@ -4080,42 +4110,27 @@ if (_txDateEl) _txDateEl.value = todayISO();
 // ── State ──
 const NOTIF_KEY = 'nobile_notif_settings';
 
-const NOTIF_DEFAULTS = {
-  pushEnabled: false,
-  email: '',
-  reminderTime: '20:00',
-  types: {
-    payments: true, budget: true, habits: true, weekly: true, ai: true,
-    academy: true, planner: true, mood: true, impulse: true, growth: true
-  }
-};
-
 function getNotifSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem(NOTIF_KEY));
-    if (!saved) return JSON.parse(JSON.stringify(NOTIF_DEFAULTS));
-    // Merge with defaults to add new type keys
-    saved.types = Object.assign({}, NOTIF_DEFAULTS.types, saved.types || {});
-    return saved;
-  } catch { return JSON.parse(JSON.stringify(NOTIF_DEFAULTS)); }
+    return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {
+      pushEnabled: false,
+      email: '',
+      reminderTime: '20:00',
+      types: { payments: true, budget: true, habits: false, weekly: true, ai: true }
+    };
+  } catch { return { pushEnabled: false, email: '', reminderTime: '20:00', types: { payments: true, budget: true, habits: false, weekly: true, ai: true } }; }
 }
 
 function saveNotifSettings() {
   const ns = getNotifSettings();
   ns.email        = document.getElementById('set-email')?.value?.trim() || ns.email;
   ns.reminderTime = document.getElementById('set-notif-time')?.value || ns.reminderTime;
-  const boolEl = id => { const el = document.getElementById(id); return el ? el.checked : undefined; };
   ns.types = {
-    payments: boolEl('nt-payments') ?? ns.types.payments,
-    budget:   boolEl('nt-budget')   ?? ns.types.budget,
-    habits:   boolEl('nt-habits')   ?? ns.types.habits,
-    weekly:   boolEl('nt-weekly')   ?? ns.types.weekly,
-    ai:       boolEl('nt-ai')       ?? ns.types.ai,
-    academy:  boolEl('nt-academy')  ?? ns.types.academy,
-    planner:  boolEl('nt-planner')  ?? ns.types.planner,
-    mood:     boolEl('nt-mood')     ?? ns.types.mood,
-    impulse:  boolEl('nt-impulse')  ?? ns.types.impulse,
-    growth:   boolEl('nt-growth')   ?? ns.types.growth,
+    payments: document.getElementById('nt-payments')?.checked ?? ns.types.payments,
+    budget:   document.getElementById('nt-budget')?.checked   ?? ns.types.budget,
+    habits:   document.getElementById('nt-habits')?.checked   ?? ns.types.habits,
+    weekly:   document.getElementById('nt-weekly')?.checked   ?? ns.types.weekly,
+    ai:       document.getElementById('nt-ai')?.checked       ?? ns.types.ai,
   };
   localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
   scheduleNotifications();
@@ -4140,239 +4155,135 @@ function loadNotifSettingsUI() {
 function updatePushStatusLabel() {
   const el = document.getElementById('push-status-label');
   if (!el) return;
-  if (!('Notification' in window)) { el.textContent = 'Не поддерживается браузером'; return; }
-  const perm = Notification.permission;
-  if (perm === 'granted') el.textContent = '✓ Включены и работают';
-  else if (perm === 'denied') el.textContent = '✗ Заблокированы в браузере — разрешите в настройках сайта';
-  else el.textContent = 'Нажмите чтобы включить';
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  NOBILE NOTIFICATION ENGINE v4.2.2
-//  ✓ Service Worker registration & messaging
-//  ✓ Icon: icons/nobile-notification.png (badge / status bar)
-//  ✓ Comprehensive daily schedule (7 notification types)
-//  ✓ Academy: reminder + follow-up if lesson not done
-//  ✓ Habits: uncompleted habits reminder
-//  ✓ Planner: today's tasks reminder
-//  ✓ Mood: evening mood check-in
-//  ✓ Impulse spending: random-time warnings
-//  ✓ Payments: 3 days ahead, same-day alert
-//  ✓ Weekly summary (Sunday)
-//  ✓ Deep-link: tap → correct section after PIN
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/* ── Icons ── */
-const NOTIF_ICON  = './icons/nobile-notification-large.png';
-const NOTIF_BADGE = './icons/nobile-notification.png';
-
-/* ── Service Worker reference ── */
-let _sw = null;
-
-async function initServiceWorker() {
-  if (!('serviceWorker' in navigator)) return null;
-  try {
-    const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
-    _sw = reg;
-    // Listen for messages from SW (navigation commands)
-    navigator.serviceWorker.addEventListener('message', onSWMessage);
-    return reg;
-  } catch(e) {
-    console.warn('[Notif] SW registration failed:', e);
-    return null;
-  }
-}
-
-function onSWMessage(event) {
-  const { type, deeplink } = event.data || {};
-  if (type === 'NAVIGATE' && deeplink) {
-    handleDeepLink(deeplink);
-  }
-}
-
-/* ── Deep-link: navigate to the correct section ── */
-function handleDeepLink(deeplink) {
-  if (!deeplink) return;
-  // Store pending deeplink — resolved after PIN unlock
-  sessionStorage.setItem('nobile_pending_deeplink', deeplink);
-  // If app is already unlocked (auth-screen gone), navigate immediately
-  if (!document.getElementById('auth-screen')) {
-    applyDeepLink(deeplink);
-  }
-}
-
-function applyDeepLink(deeplink) {
-  if (!deeplink) return;
-  sessionStorage.removeItem('nobile_pending_deeplink');
-  try {
-    const [page, sub] = deeplink.split(':');
-    // Navigate to main page
-    if (typeof navTo === 'function' && page) {
-      navTo(page);
-    }
-    // Navigate to sub-tab if specified
-    if (sub) {
-      setTimeout(() => {
-        // Capital sub-tabs
-        const capBtn = document.querySelector(`[data-cap="${sub}"]`);
-        if (capBtn) { capBtn.click(); return; }
-        // System sub-tabs (habits/planner)
-        const sysBtn = document.querySelector(`[data-sys="${sub}"]`);
-        if (sysBtn) { sysBtn.click(); return; }
-        // Academy sub-tabs
-        const acaBtn = document.querySelector(`[data-aca="${sub}"]`);
-        if (acaBtn) { acaBtn.click(); return; }
-      }, 350);
-    }
-    // Special deep-links
-    if (page === 'academy_lesson') {
-      setTimeout(() => {
-        if (typeof navTo === 'function') navTo('academy');
-        setTimeout(() => {
-          const s = typeof getAcademyState === 'function' ? getAcademyState() : null;
-          if (s && typeof COURSES !== 'undefined') {
-            const next = COURSES.find(c => !s.completedCourses?.includes(c.id));
-            if (next && typeof openLesson === 'function') openLesson(next.id);
-          }
-        }, 400);
-      }, 100);
-    }
-    if (page === 'mood') {
-      setTimeout(() => {
-        if (typeof navTo === 'function') navTo('today');
-        setTimeout(() => {
-          const moodEl = document.querySelector('.mood-row, .mood-section, [data-section="mood"]');
-          if (moodEl) moodEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 400);
-      }, 100);
-    }
-  } catch(e) { console.warn('[Deeplink] error:', e); }
-}
-
-/* ── Check & apply pending deeplink after auth ── */
-function checkPendingDeeplink() {
-  const dl = sessionStorage.getItem('nobile_pending_deeplink');
-  if (dl) {
-    setTimeout(() => applyDeepLink(dl), 600);
-  }
-  // Also handle URL param (from SW openWindow)
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const dlParam = params.get('deeplink');
-    if (dlParam) applyDeepLink(dlParam);
-  } catch(e) {}
-}
-
-/* ─────────────────────────────────────────────────
-   PUSH Notifications ──
-───────────────────────────────────────────────── */
-async function togglePushNotif(enabled) {
-  if (!('Notification' in window)) {
-    showToast('❌ Браузер не поддерживает уведомления');
-    document.getElementById('tog-push').checked = false;
+  if (typeof Notification === 'undefined') {
+    el.textContent = 'Не поддерживается браузером';
+    el.style.color = 'var(--coral)';
     return;
   }
+  const perm = Notification.permission;
+  const ns   = getNotifSettings();
+  if (perm === 'granted' && ns.pushEnabled) {
+    el.innerHTML = '✓ Включены и работают';
+    el.style.color = 'var(--mint)';
+  } else if (perm === 'denied') {
+    el.innerHTML = '✗ Заблокированы — разрешите в настройках браузера';
+    el.style.color = 'var(--coral)';
+  } else {
+    el.textContent = 'Нажмите чтобы включить';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+// ── Push Notifications — Service Worker based ──
+async function togglePushNotif(enabled) {
+  const toggleEl = document.getElementById('tog-push');
+
+  if (!('Notification' in window)) {
+    showToast('❌ Браузер не поддерживает уведомления');
+    if (toggleEl) toggleEl.checked = false;
+    return;
+  }
+
   if (enabled) {
-    const perm = await Notification.requestPermission();
-    if (perm === 'granted') {
-      const ns = getNotifSettings();
-      ns.pushEnabled = true;
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
-      // Register SW
-      await initServiceWorker();
-      showToast('🔔 Уведомления включены!');
-      updatePushStatusLabel();
-      scheduleNotifications();
-      sendPush('🎉 Nobile уведомления включены!', 'Теперь вы будете получать напоминания о платежах, привычках и академии.', 'welcome', 'today');
-    } else {
-      showToast('❌ Разрешение отклонено. Разрешите в настройках сайта.');
-      document.getElementById('tog-push').checked = false;
-      updatePushStatusLabel();
+    // Request permission
+    let perm = Notification.permission;
+    if (perm === 'default') {
+      perm = await Notification.requestPermission();
     }
+
+    if (perm !== 'granted') {
+      showToast('❌ Разрешение отклонено. Разрешите уведомления в настройках браузера/сайта.');
+      if (toggleEl) toggleEl.checked = false;
+      updatePushStatusLabel();
+      return;
+    }
+
+    // Permission granted — save and schedule
+    const ns = getNotifSettings();
+    ns.pushEnabled = true;
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
+    updatePushStatusLabel();
+    scheduleNotifications();
+
+    // Welcome notification via SW
+    await sendPush('🔔 Nobile уведомления включены!', 'Напоминания о платежах и привычках активированы.', 'nobile-welcome', 'welcome');
+    showToast('🔔 Пуш-уведомления включены!');
+
   } else {
     const ns = getNotifSettings();
     ns.pushEnabled = false;
     localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
     clearScheduledNotifications();
-    showToast('🔕 Уведомления отключены');
+    if (toggleEl) toggleEl.checked = false;
     updatePushStatusLabel();
+    showToast('🔕 Пуш-уведомления отключены');
   }
 }
 
-function sendPush(title, body, tag = 'nobile', deeplink = '', actions = []) {
-  if (Notification.permission !== 'granted') return;
-  // Prefer SW notifications (work when app is in background)
-  if (_sw?.active) {
-    _sw.active.postMessage({
-      type: 'SEND_PUSH',
-      payload: { title, body, tag, deeplink, actions }
-    });
-    return;
-  }
-  // Fallback: browser Notification API
+// Send notification via Service Worker (works in PWA on Android) or fallback to Notification API
+async function sendPush(title, body, tag = 'nobile', category = 'default', extra = {}) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try {
+    // Prefer Service Worker showNotification (required for Android PWA)
+    const reg = window._swReg || (navigator.serviceWorker ? await navigator.serviceWorker.ready : null);
+    if (reg && reg.active) {
+      reg.active.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title, body, tag, category,
+        amount: extra.amount,
+        date:   extra.date
+      });
+      return;
+    }
+    // Also try showNotification directly on registration
+    if (reg && reg.showNotification) {
+      await reg.showNotification(title, {
+        body, tag,
+        icon: './icons/nobile-logo-192.png',
+        badge: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='18' fill='white'/><text x='50%' y='72' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='64' fill='black'>N</text></svg>`,
+        vibrate: [150, 80, 150],
+        requireInteraction: false,
+        silent: false,
+        data: { category, url: './' }
+      });
+      return;
+    }
+  } catch(e) {}
+  // Fallback for desktop browsers without SW
   try {
     const n = new Notification(title, {
-      body,
-      icon:  NOTIF_ICON,
-      badge: NOTIF_BADGE,
-      tag,
-      data:  { deeplink },
-      requireInteraction: false,
-      silent: false
+      body, tag, icon: './icons/nobile-logo-192.png',
+      requireInteraction: false
     });
-    n.onclick = () => {
-      window.focus();
-      n.close();
-      if (deeplink) handleDeepLink(deeplink);
-    };
-    setTimeout(() => n.close(), 10000);
+    n.onclick = () => { window.focus(); n.close(); };
+    setTimeout(() => n.close(), 8000);
   } catch(e) {}
 }
 
-/* ─────────────────────────────────────────────────
-   SCHEDULE ENGINE
-───────────────────────────────────────────────── */
+// Periodic keepalive: send current data to SW so it can check payments in background
+function _notifKeepalive() {
+  try {
+    const reg = window._swReg;
+    if (!reg || !reg.active) return;
+    const ns = getNotifSettings();
+    if (!ns.pushEnabled || Notification.permission !== 'granted') return;
+    if (!ns.types?.payments) return;
+    reg.active.postMessage({
+      type: 'SCHEDULE_CHECK',
+      payload: {
+        recurringPayments: DB.recurringPayments || [],
+        todayKey: todayISO()
+      }
+    });
+  } catch(e) {}
+}
+
+// ── Scheduled notifications with setInterval ──
 let _notifTimers = [];
 
 function clearScheduledNotifications() {
   _notifTimers.forEach(t => clearTimeout(t));
   _notifTimers = [];
-  // Also cancel SW timers
-  if (_sw?.active) {
-    _sw.active.postMessage({ type: 'CANCEL_NOTIFICATIONS' });
-  }
-}
-
-/* Helper: milliseconds until HH:MM today (or tomorrow if already past) */
-function msUntil(h, m) {
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(h, m, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  return target - now;
-}
-
-/* Helper: random offset ±range ms around a center ms */
-function jitter(ms, rangeMins = 15) {
-  return ms + (Math.random() - 0.5) * rangeMins * 60 * 1000;
-}
-
-/* ── Next uncompleted lesson info ── */
-function getNextLessonInfo() {
-  try {
-    const s = getAcademyState();
-    if (typeof COURSES === 'undefined') return null;
-    const next = COURSES.find(c => !s.completedCourses?.includes(c.id));
-    return next || null;
-  } catch(e) { return null; }
-}
-
-/* ── Has user studied today? ── */
-function studiedToday() {
-  try {
-    const s = getAcademyState();
-    return s.lastLearnDate === todayISO();
-  } catch(e) { return false; }
 }
 
 function scheduleNotifications() {
@@ -4380,306 +4291,189 @@ function scheduleNotifications() {
   const ns = getNotifSettings();
   if (!ns.pushEnabled || Notification.permission !== 'granted') return;
 
-  const swSchedule = []; // items for SW background scheduling
+  const now = new Date();
 
-  /* ────────────────────────────────────────────────
-     1. ACADEMY — 08:30  (morning reminder)
-     Follow-up — 13:00  (if no lesson done by then)
-  ──────────────────────────────────────────────── */
-  if (ns.types.academy !== false) {
-    const t1 = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.academy === false) return;
-      if (studiedToday()) return; // already done
-      sendPush(
-        '🎓 Академия — урок дня',
-        '1 урок в день — и через месяц ты будешь знать финансы лучше 90% людей. Начни прямо сейчас!',
-        'academy-morning',
-        'academy'
-      );
-      scheduleNotifications(); // re-schedule next day
-    }, jitter(msUntil(8, 30)));
-    _notifTimers.push(t1);
+  // ── Keepalive: send data to SW every 30 min so it can check payments ──
+  const keepalive = setInterval(() => _notifKeepalive(), 30 * 60 * 1000);
+  _notifTimers.push(keepalive);
+  // Run once immediately
+  setTimeout(_notifKeepalive, 3000);
 
-    // Follow-up at 13:00 if still not done
-    const t2 = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.academy === false) return;
-      if (studiedToday()) return;
-      const lesson = getNextLessonInfo();
-      if (lesson) {
-        sendPush(
-          `📚 ${lesson.icon} ${lesson.title}`,
-          `Следующий урок: «${lesson.title}» — ${lesson.desc?.slice(0,80) || 'Пройди за ' + lesson.time}`,
-          'academy-followup',
-          'academy_lesson'
-        );
-      } else {
-        sendPush(
-          '🎓 Не забудь про урок!',
-          'Ежедневное обучение — главная привычка богатых людей. Открой академию!',
-          'academy-followup',
-          'academy'
-        );
-      }
-    }, jitter(msUntil(13, 0)));
-    _notifTimers.push(t2);
-  }
-
-  /* ────────────────────────────────────────────────
-     2. HABITS — user's set time (default 20:00)
-  ──────────────────────────────────────────────── */
+  // ── Daily reminder at set time ──
   if (ns.types.habits) {
     const [hh, mm] = (ns.reminderTime || '20:00').split(':').map(Number);
+    const target = new Date(now);
+    target.setHours(hh, mm, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const msUntil = target - now;
     const t = setTimeout(() => {
       const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || !ns2.types.habits) return;
+      if (!ns2.types.habits) return;
       const todayKey = todayISO();
-      const undone = (DB.habits || []).filter(h => !h.completions?.[todayKey]);
-      if (undone.length > 0) {
-        const names = undone.slice(0, 3).map(h => h.name).join(', ');
-        const more  = undone.length > 3 ? ` и ещё ${undone.length - 3}` : '';
-        sendPush(
-          `⚡ Привычки: ${undone.length} не отмечено`,
-          `${names}${more}. Не дай стрику прерваться!`,
-          'habits',
-          'system:habits'
-        );
-      }
-      scheduleNotifications();
-    }, jitter(msUntil(hh, mm)));
-    _notifTimers.push(t);
-  }
-
-  /* ────────────────────────────────────────────────
-     3. PLANNER — задачи на сегодня, 09:00
-  ──────────────────────────────────────────────── */
-  if (ns.types.planner !== false) {
-    const t = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.planner === false) return;
-      const todayKey = todayISO();
-      const todayTasks = (DB.tasks || []).filter(t => t.date === todayKey && !t.done);
-      if (todayTasks.length > 0) {
-        const topTask = todayTasks.sort((a,b) => (b.priority||0)-(a.priority||0))[0];
-        const extra   = todayTasks.length > 1 ? ` (+${todayTasks.length-1} задач)` : '';
-        sendPush(
-          `📋 Планер: ${todayTasks.length} задач сегодня`,
-          `Главное: «${topTask.text}»${extra}`,
-          'planner-morning',
-          'system:planner'
-        );
-      }
-      scheduleNotifications();
-    }, jitter(msUntil(9, 0)));
-    _notifTimers.push(t);
-  }
-
-  /* ────────────────────────────────────────────────
-     4. PLANNER — вечерний контроль, 18:30
-  ──────────────────────────────────────────────── */
-  if (ns.types.planner !== false) {
-    const t = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.planner === false) return;
-      const todayKey = todayISO();
-      const undone = (DB.tasks || []).filter(t => t.date === todayKey && !t.done);
+      const undone = DB.habits.filter(h => !h.completions?.[todayKey]);
       if (undone.length > 0) {
         sendPush(
-          `⚠️ ${undone.length} задач не выполнено`,
-          `До конца дня: ${undone.slice(0,2).map(t=>t.text).join('; ')}`,
-          'planner-evening',
-          'system:planner'
+          `⚡ Привычки: ${undone.length} не выполнено`,
+          undone.slice(0,3).map(h=>h.name).join(', ') + (undone.length>3?` +${undone.length-3} ещё`:''),
+          'habits', 'habit'
         );
       }
-    }, jitter(msUntil(18, 30)));
-    _notifTimers.push(t);
-  }
-
-  /* ────────────────────────────────────────────────
-     5. MOOD — ежедневный чекин, 21:00
-  ──────────────────────────────────────────────── */
-  if (ns.types.mood !== false) {
-    const t = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.mood === false) return;
-      const todayKey = todayISO();
-      const hasMood = DB.mood?.[todayKey];
-      if (!hasMood) {
-        sendPush(
-          '😊 Как прошёл день?',
-          'Отметь своё финансовое настроение — 1 минута, которая помогает видеть паттерны.',
-          'mood',
-          'mood'
-        );
-      }
+      // Re-schedule for next day
       scheduleNotifications();
-    }, jitter(msUntil(21, 0)));
+    }, msUntil);
     _notifTimers.push(t);
   }
 
-  /* ────────────────────────────────────────────────
-     6. IMPULSE SPENDING — 12:00 & 16:00 (рандом)
-  ──────────────────────────────────────────────── */
-  if (ns.types.impulse !== false) {
-    const impulseMessages = [
-      { t: '⚠️ Правило 24 часов', b: 'Перед незапланированной покупкой подожди 24 часа. 80% желаний проходят.' },
-      { t: '💡 Импульсные траты = потери', b: 'Средняя импульсная покупка = 1 500 ₽. За год — 18 000 ₽ уходит «ни на что».' },
-      { t: '🧠 Эмоции vs. бюджет', b: 'Чувствуешь желание купить что-то неплановое? Запиши и реши завтра.' },
-      { t: '🛒 Список — твой щит', b: 'Ходишь без списка = тратишь на 30% больше. Составь его прямо сейчас.' },
-      { t: '💰 Цена вопроса', b: 'Сколько часов тебе нужно работать, чтобы позволить себе эту покупку? Посчитай.' },
-    ];
-    const msg = impulseMessages[Math.floor(Math.random() * impulseMessages.length)];
-
-    // Random between 11:30–12:30
-    const t1 = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.impulse === false) return;
-      sendPush(msg.t, msg.b, 'impulse', 'today');
-    }, jitter(msUntil(12, 0), 30));
-    _notifTimers.push(t1);
-
-    // Afternoon — 15:30-16:30
-    const msg2 = impulseMessages[(Math.floor(Math.random() * impulseMessages.length) + 2) % impulseMessages.length];
-    const t2 = setTimeout(() => {
-      const ns2 = getNotifSettings();
-      if (!ns2.pushEnabled || ns2.types.impulse === false) return;
-      // Only send if user has expenses today (likely shopping time)
-      const todayKey = todayISO();
-      const todayExpenses = (DB.transactions || []).filter(t => t.date === todayKey && t.type === 'expense');
-      if (todayExpenses.length > 0) {
-        sendPush(msg2.t, msg2.b, 'impulse-pm', 'today');
-      }
-    }, jitter(msUntil(16, 0), 30));
-    _notifTimers.push(t2);
-  }
-
-  /* ────────────────────────────────────────────────
-     7. PAYMENTS — check at 10:00 daily
-  ──────────────────────────────────────────────── */
+  // ── Payment reminders — check every hour ──
   if (ns.types.payments) {
-    const t = setTimeout(() => {
+    const checkPayments = () => {
+      const today = new Date();
       const ns2 = getNotifSettings();
       if (!ns2.pushEnabled || !ns2.types.payments) return;
-      const today = new Date();
-      const urgent = (DB.recurringPayments || []).filter(r => {
+      const urgent = DB.recurringPayments.filter(r => {
         if (isPaymentPaid(r.id)) return false;
-        const payDate = new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth);
-        const diff = Math.ceil((payDate - today) / 86400000);
+        const diff = Math.ceil((new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth) - today) / 86400000);
         return diff >= 0 && diff <= 3;
       });
       urgent.forEach(r => {
-        const payDate = new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth);
-        const diff = Math.ceil((payDate - today) / 86400000);
-        const when = diff === 0 ? 'СЕГОДНЯ' : `через ${diff} дн.`;
+        const diff = Math.ceil((new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth) - today) / 86400000);
+        const when = diff === 0 ? 'сегодня' : `через ${diff} дн.`;
         sendPush(
           `⏰ Платёж: ${r.name}`,
           `${r.amount.toLocaleString('ru')} ₽ — ${when} (${r.dayOfMonth} числа)`,
-          `payment-${r.id}`,
-          'capital:payments'
+          `payment-${r.id}`, 'payment', {amount: r.amount, date: r.dayOfMonth}
         );
       });
-      scheduleNotifications();
-    }, jitter(msUntil(10, 0)));
-    _notifTimers.push(t);
+    };
+    // Check now + every 4 hours
+    setTimeout(checkPayments, 2000);
+    const interval = setInterval(checkPayments, 4 * 3600 * 1000);
+    _notifTimers.push(interval);
   }
 
-  /* ────────────────────────────────────────────────
-     8. WEEKLY SUMMARY — Sunday 19:00
-  ──────────────────────────────────────────────── */
+  // ── Weekly summary — Sunday evening ──
   if (ns.types.weekly) {
-    const now = new Date();
+    const nextSunday = new Date(now);
     const daysUntilSun = (7 - now.getDay()) % 7 || 7;
-    const nextSun = new Date(now);
-    nextSun.setDate(nextSun.getDate() + daysUntilSun);
-    nextSun.setHours(19, 0, 0, 0);
+    nextSunday.setDate(nextSunday.getDate() + daysUntilSun);
+    nextSunday.setHours(19, 0, 0, 0);
     const t = setTimeout(() => {
       const ns2 = getNotifSettings();
       if (!ns2.pushEnabled || !ns2.types.weekly) return;
-      try {
-        const stats = calcStats();
-        sendPush(
-          '📊 Недельная сводка Nobile',
-          `Доходы: +${stats.income.toLocaleString('ru')} ₽ · Расходы: −${stats.expense.toLocaleString('ru')} ₽ · Баланс: ${stats.balance.toLocaleString('ru')} ₽`,
-          'weekly',
-          'capital'
-        );
-      } catch(e) {
-        sendPush('📊 Недельная сводка', 'Проверь финансы за неделю в разделе Капитал.', 'weekly', 'capital');
-      }
-    }, nextSun - now);
+      const stats = calcStats();
+      sendPush(
+        '📊 Недельная сводка Nobile',
+        `Доходы: +${stats.income.toLocaleString('ru')} ₽ · Расходы: −${stats.expense.toLocaleString('ru')} ₽ · Баланс: ${stats.balance.toLocaleString('ru')} ₽`,
+        'weekly', 'weekly'
+      );
+    }, nextSunday - now);
     _notifTimers.push(t);
-  }
-
-  /* ────────────────────────────────────────────────
-     9. GROWTH — motivational at 07:00 (Mon/Wed/Fri)
-  ──────────────────────────────────────────────── */
-  {
-    const now = new Date();
-    const day = now.getDay(); // 0=Sun, 1=Mon, ...
-    const growthDays = [1, 3, 5]; // Mon, Wed, Fri
-    if (growthDays.includes(day)) {
-      const tips = [
-        { t: '💪 Финансовая утренняя установка', b: '«Каждый сохранённый рубль — это рубль, работающий на твою свободу.» Хорошего дня!' },
-        { t: '🚀 Маленький шаг сегодня', b: 'Добавь хотя бы один урок в академии сегодня. Знания накапливаются как сложный процент.' },
-        { t: '🌟 Напоминание о цели', b: 'Как далеко твой финансовый прогресс? Загляни в раздел Капитал → Цели.' },
-      ];
-      const tip = tips[Math.floor(Math.random() * tips.length)];
-      const t = setTimeout(() => {
-        const ns2 = getNotifSettings();
-        if (!ns2.pushEnabled) return;
-        sendPush(tip.t, tip.b, 'growth', 'capital:goals');
-      }, jitter(msUntil(7, 0)));
-      _notifTimers.push(t);
-    }
   }
 }
 
-/* ── Budget push alert (called from checkAlerts) ── */
+// ── Budget push alert (called from checkAlerts) ──
 function triggerBudgetPush(title, body) {
   const ns = getNotifSettings();
   if (!ns.pushEnabled || !ns.types.budget) return;
-  sendPush(title, body, 'budget', 'capital:budget');
+  sendPush(title, body, 'budget', 'budget');
 }
 
-/* ── On load: boot notifications ── */
-setTimeout(async () => {
-  try {
-    // Register SW first
-    await initServiceWorker();
+// ── Email System (mailto-based, universal) ──
+function buildEmailBody(type = 'summary') {
+  const stats  = calcStats();
+  const todayD = new Date();
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const dateStr = `${todayD.getDate()} ${months[todayD.getMonth()]} ${todayD.getFullYear()}`;
+  const totalAssets = DB.assets.reduce((s,a)=>s+a.amount, 0);
+  const totalSaved  = DB.savings.reduce((s,e)=>s+e.amount, 0);
+  const goalPct = Math.min(100, Math.round((totalAssets+totalSaved)/(DB.user.goal||7900000)*100));
 
-    // Check URL deeplink param
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const dlParam = params.get('deeplink');
-      if (dlParam) sessionStorage.setItem('nobile_pending_deeplink', dlParam);
-    } catch(e) {}
+  const todayKey = todayISO();
+  const doneHabits  = DB.habits.filter(h =>  h.completions?.[todayKey]);
+  const undoneHabits = DB.habits.filter(h => !h.completions?.[todayKey]);
+  const urgentPay = DB.recurringPayments.filter(r => {
+    if (isPaymentPaid(r.id)) return false;
+    const diff = Math.ceil((new Date(todayD.getFullYear(), todayD.getMonth(), r.dayOfMonth) - todayD) / 86400000);
+    return diff >= 0 && diff <= 7;
+  });
 
-    const ns = getNotifSettings();
-    if (ns.pushEnabled && Notification.permission === 'granted') {
-      scheduleNotifications();
-    }
-    // Check urgent payments on load
-    if (ns.pushEnabled && ns.types.payments && Notification.permission === 'granted') {
-      const today = new Date();
-      const urgent = (DB.recurringPayments || []).filter(r => {
-        if (isPaymentPaid(r.id)) return false;
-        const payDate = new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth);
-        const diff = Math.ceil((payDate - today) / 86400000);
-        return diff === 0;
-      });
-      urgent.forEach(r => {
-        sendPush(
-          `⏰ Платёж сегодня: ${r.name}`,
-          `${r.amount.toLocaleString('ru')} ₽ нужно оплатить сегодня`,
-          `payment-today-${r.id}`,
-          'capital:payments'
-        );
-      });
-    }
-  } catch(e) { console.warn('[Notif boot]', e); }
+  const lines = [
+    `NOBILE — Финансовая сводка · ${dateStr}`,
+    `Пользователь: ${DB.user.name}`,
+    ``,
+    `═══ ФИНАНСЫ ═══`,
+    `Доходы:   +${stats.income.toLocaleString('ru')} ₽`,
+    `Расходы:  −${stats.expense.toLocaleString('ru')} ₽`,
+    `Баланс:    ${stats.balance.toLocaleString('ru')} ₽`,
+    `Норма сбережений: ${stats.savingsRate}%`,
+    `Капитал: ${(totalAssets+totalSaved).toLocaleString('ru')} ₽ (${goalPct}% к цели)`,
+    ``,
+    `═══ ПРИВЫЧКИ СЕГОДНЯ (${doneHabits.length}/${DB.habits.length}) ═══`,
+    doneHabits.length > 0 ? `✓ Выполнены: ${doneHabits.map(h=>h.name).join(', ')}` : '',
+    undoneHabits.length > 0 ? `✗ Не выполнены: ${undoneHabits.map(h=>h.name).join(', ')}` : '',
+    ``,
+  ];
+
+  if (urgentPay.length > 0) {
+    lines.push(`═══ СРОЧНЫЕ ПЛАТЕЖИ ═══`);
+    urgentPay.forEach(r => {
+      const diff = Math.ceil((new Date(todayD.getFullYear(), todayD.getMonth(), r.dayOfMonth) - todayD) / 86400000);
+      lines.push(`⏰ ${r.name}: ${r.amount.toLocaleString('ru')} ₽ — ${diff===0?'СЕГОДНЯ':`через ${diff} дн.`}`);
+    });
+    lines.push('');
+  }
+
+  lines.push(`Открыть Nobile: ${window.location.href}`);
+  lines.push(`— Nobile AI Assistant`);
+
+  return lines.filter(l => l !== null).join('%0D%0A');
+}
+
+function sendEmailSummary() {
+  const ns = getNotifSettings();
+  const email = ns.email || document.getElementById('set-email')?.value?.trim() || '';
+  const subject = encodeURIComponent(`Nobile — Финансовая сводка · ${new Date().toLocaleDateString('ru')}`);
+  const body = buildEmailBody('summary');
+  const mailto = `mailto:${email}?subject=${subject}&body=${body}`;
+  window.location.href = mailto;
+  showToast('📧 Открываем почтовый клиент...');
+}
+
+function testEmailNotif() {
+  const email = document.getElementById('set-email')?.value?.trim();
+  if (!email || !email.includes('@')) {
+    showToast('❌ Введите корректный email');
+    return;
+  }
+  const ns = getNotifSettings();
+  ns.email = email;
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(ns));
+  const subject = encodeURIComponent('✅ Nobile — Тестовое уведомление');
+  const body = buildEmailBody('test');
+  window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  showToast('📧 Тест отправлен!');
+}
+
+// ── Hook into settings open ──
+// ── On load: restore and schedule ──
+setTimeout(() => {
+  const ns = getNotifSettings();
+  if (ns.pushEnabled && Notification.permission === 'granted') {
+    scheduleNotifications();
+  }
+  // Check for urgent payments on load and notify if push enabled
+  if (ns.pushEnabled && ns.types.payments && Notification.permission === 'granted') {
+    const today = new Date();
+    const urgent = DB.recurringPayments.filter(r => {
+      if (isPaymentPaid(r.id)) return false;
+      const diff = Math.ceil((new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth) - today) / 86400000);
+      return diff === 0;
+    });
+    urgent.forEach(r => {
+      sendPush(`⏰ Платёж сегодня: ${r.name}`, `${r.amount.toLocaleString('ru')} ₽ нужно оплатить сегодня`, `payment-today-${r.id}`, 'payment', {amount: r.amount});
+    });
+  }
 }, 2000);
-
 
 /* ═══════════════════════════════════════
    AUTOPILOT ENGINE
