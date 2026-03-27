@@ -264,81 +264,93 @@ ${recs}
   }, 400);
 }
 
-let _lastStressData = null;
+function renderStressIndex() {
+  const el = document.getElementById('stress-index-block');
+  if (!el) return;
 
-function openStressModal() {
-  const d = _lastStressData || calcFinancialStress();
-  const overlay = document.getElementById('stress-modal-overlay');
-  if (!overlay) return;
+  const d = calcFinancialStress();
+  const levelTxt = d.level==='low' ? 'НИЗКИЙ' : d.level==='med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
+  const pillClass = d.level==='low' ? 'low' : d.level==='med' ? 'med' : 'high';
 
-  const levelTxt = d.level === 'low' ? 'НИЗКИЙ' : d.level === 'med' ? 'СРЕДНИЙ' : 'ВЫСОКИЙ';
   const f = d.factors || [];
   const c1 = f[0] ? `${f[0].label}: ${f[0].text}` : '—';
   const c2 = f[1] ? `${f[1].label}: ${f[1].text}` : '—';
-  const netDailyTxt = `${d.netDaily >= 0 ? '+' : ''}${Math.round(d.netDaily).toLocaleString('ru')} ₽/день`;
-  const daysTxt = d.daysToZero === null ? '—' : `~${d.daysToZero} дн.`;
 
-  document.getElementById('smod-pill').textContent = levelTxt;
-  document.getElementById('smod-pill').className   = 'stress-modal-pill ' + d.level;
-  document.getElementById('smod-score').textContent = d.score;
-  const fillEl = document.getElementById('smod-fill');
-  if (fillEl) { fillEl.style.width = '0%'; setTimeout(() => { fillEl.style.width = Math.max(4, Math.min(100, d.score)) + '%'; fillEl.style.backgroundPosition = d.level === 'low' ? '0% 50%' : d.level === 'med' ? '50% 50%' : '100% 50%'; }, 80); }
+  const netDailyTxt = `${d.netDaily>=0?'+':''}${Math.round(d.netDaily).toLocaleString('ru')} ₽/день`;
+  const daysTxt = (d.daysToZero===null) ? '—' : `~${d.daysToZero} дн.`;
 
-  const hintMsg = d.level === 'high'
-    ? '<b style="color:var(--coral)">Высокий стресс.</b> Ниже — причины и быстрые шаги.'
-    : d.level === 'med'
-    ? 'Есть зоны риска. Стабилизируй 1–2 фактора — индекс быстро упадёт.'
-    : 'Ситуация стабильная. Следи за динамикой и не давай тратам расти.';
-  document.getElementById('smod-hint').innerHTML = hintMsg;
+  const hint = d.level==='high'
+    ? `<div class="stress-hint"><b style="color:var(--coral)">Высокий стресс.</b> Ниже — причины и быстрые шаги.</div>`
+    : d.level==='med'
+      ? `<div class="stress-hint">Есть зоны риска. Стабилизируй 1–2 фактора — индекс быстро упадёт.</div>`
+      : `<div class="stress-hint">Ситуация стабильная. Следи за динамикой и не давай тратам расти.</div>`;
 
-  document.getElementById('smod-chips').innerHTML = `
-    <div class="stress-modal-chip"><div class="k">Ключевой фактор</div><div class="v">${c1}</div></div>
-    <div class="stress-modal-chip"><div class="k">Второй фактор</div><div class="v">${c2}</div></div>
-    <div class="stress-modal-chip"><div class="k">Дневной кешфлоу</div><div class="v" style="color:${d.netDaily >= 0 ? 'var(--mint)' : 'var(--coral)'}">${netDailyTxt}</div></div>
-    <div class="stress-modal-chip"><div class="k">Дней до нуля</div><div class="v">${daysTxt}</div></div>`;
-
-  const recs = (d.recommendations || []).slice(0, 4);
-  document.getElementById('smod-recs').innerHTML = recs.length
-    ? recs.map(r => `<div class="stress-modal-rec"><div class="stress-modal-rec-dot"></div><div>${r}</div></div>`).join('')
+  const recs = (d.recommendations||[]).slice(0,3);
+  const recHtml = recs.length
+    ? `<div class="stress-recs">
+        <div class="stress-recs-h">Персональные рекомендации</div>
+        ${recs.map(x=>`<div class="stress-rec"><div class="dot"></div><div class="t">${x}</div></div>`).join('')}
+      </div>`
     : '';
 
-  overlay.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
+  // Compact: keep only essentials visible, details are expandable.
+  const primaryCtaLabel = d.level==='high' ? 'План действий' : 'Что улучшить?';
 
-function closeStressModal() {
-  const overlay = document.getElementById('stress-modal-overlay');
-  if (overlay) overlay.style.display = 'none';
-  document.body.style.overflow = '';
-}
+  const detailActions = [
+    `<button class="stress-btn primary" onclick="openStressAIPlan()">Спросить Nobile AI</button>`,
+    `<button class="stress-btn" onclick="navTo('growth')">Расходы</button>`,
+    `<button class="stress-btn" onclick="navTo('capital')">Платежи</button>`,
+  ].filter(Boolean).join('');
 
-function renderStressIndex() {
-  // Hide the old standalone block permanently
-  const el = document.getElementById('stress-index-block');
-  if (el) el.style.display = 'none';
+  el.innerHTML = `
+    <div class="stress-card stress-compact">
+      <div class="stress-top">
+        <div>
+          <div class="stress-title">Индекс финансового стресса</div>
+          <div class="stress-sub stress-sub-compact">Насколько спокойно «дышит» бюджет сейчас (0 — ок, 100 — тяжело)</div>
+        </div>
+        <div class="stress-pill ${pillClass}">${levelTxt}</div>
+      </div>
 
-  const d = calcFinancialStress();
-  _lastStressData = d;
+      <div class="stress-meter">
+        <div class="stress-bar"><div id="stress-bar-fill"></div></div>
+        <div class="stress-meta"><span>0</span><span class="stress-score">${d.score}/100</span><span>100</span></div>
+      </div>
 
-  // ── Update hero ring ──────────────────────────────────────────────
-  const scoreEl = document.getElementById('hero-stress-score');
-  const arc     = document.getElementById('hero-stress-arc');
-  if (scoreEl) scoreEl.textContent = d.score;
+      <div class="stress-summary">
+        <div class="stress-summary-left">
+          <div class="stress-summary-k">Главное сейчас</div>
+          <div class="stress-summary-v">${c1}</div>
+        </div>
+        <button class="stress-btn primary" onclick="openStressAIPlan()">${primaryCtaLabel}</button>
+      </div>
 
-  if (arc) {
-    const r = 24, circ = 2 * Math.PI * r; // ≈150.8
-    const filled = Math.min(Math.max(d.score, 0), 100) / 100 * circ;
-    const color  = d.level === 'low' ? '#2DE8B0' : d.level === 'med' ? '#F5C842' : '#FF6B6B';
-    arc.style.stroke = color;
-    arc.style.filter = `drop-shadow(0 0 4px ${color}99)`;
-    setTimeout(() => {
-      arc.style.strokeDasharray = `${filled.toFixed(1)} ${circ.toFixed(1)}`;
-    }, 150);
-  }
+      <details class="stress-details">
+        <summary>Подробнее</summary>
+        <div class="stress-sub" style="margin-top:8px">ИИ учитывает: траты · колебания дохода · долги (плохие/хорошие) · подушку · дневной кешфлоу</div>
 
-  // ── Apply glow to header ──────────────────────────────────────────
-  const hdr  = document.querySelector('.hdr');
+        <div class="stress-grid" style="margin-top:10px">
+          <div class="stress-chip"><div class="k">Ключевой фактор</div><div class="v">${c1}</div></div>
+          <div class="stress-chip"><div class="k">Второй фактор</div><div class="v">${c2}</div></div>
+          <div class="stress-chip"><div class="k">Дневной кешфлоу</div><div class="v" style="color:${d.netDaily>=0?'var(--mint)':'var(--coral)'}">${netDailyTxt}</div></div>
+          <div class="stress-chip"><div class="k">Дней до нуля</div><div class="v">${daysTxt}</div></div>
+        </div>
+
+        ${hint}
+        ${recHtml}
+
+        <div class="stress-actions">${detailActions}</div>
+      </details>
+    </div>`;
+
+  const bar = document.getElementById('stress-bar-fill');
+  if (bar) bar.style.width = Math.max(4, Math.min(100, d.score)) + '%';
+
+  // Apply glow effect to header and body based on stress level
+  const hdr = document.querySelector('.hdr');
   const body = document.body;
+
+  // Remove existing glow classes
   if (hdr) {
     hdr.classList.remove('hdr-stress-glow-low', 'hdr-stress-glow-med', 'hdr-stress-glow-high');
     hdr.classList.add('hdr-stress-glow-' + d.level);
@@ -637,32 +649,20 @@ function renderToday() {
   } else {
     window._habAllDoneAnimating = false;
     if (habWrap) { habWrap.style.maxHeight = '500px'; habWrap.style.opacity = '1'; habWrap.style.marginBottom = ''; }
-
-    // ── Hidden priority sort (behavioural influence) ──
-    const PRIORITY_CATS_T = ['финанс','деньг','бюджет','трат','сбереж','finance','money'];
-    function habitPriorityScore(h) {
-      const streak     = getHabitStreak(h);
-      const nameL      = (h.name || '').toLowerCase();
-      const isFinance  = PRIORITY_CATS_T.some(k => nameL.includes(k));
-      const streakBonus = (streak >= 1 && streak <= 5) ? (6 - streak) * 8 : 0;
-      return streakBonus + (isFinance ? 15 : 0) + Math.random() * 2;
-    }
-    const sortedUndone = [...undone].sort((a, b) => habitPriorityScore(b) - habitPriorityScore(a));
-    const visibleHabits = [...sortedUndone, ...doneH].slice(0, 3);
-
-    habContainer.innerHTML = visibleHabits.map(h => {
+    const allHabitsToday = DB.habits.slice(0, 6);
+    habContainer.innerHTML = allHabitsToday.map(h => {
       const isDone = !!h.completions?.[todayKey];
-      return `<div class="hab-swipe-wrap hab-today-item" data-hab-id="${h.id}" style="margin-bottom:6px">
+      return `<div class="hab-swipe-wrap" data-hab-id="${h.id}" style="margin-bottom:6px">
         <div class="hab-swipe-inner">
           <div class="hfr-ico" style="background:${isDone?'rgba(45,232,176,.15)':'var(--s2)'};cursor:pointer;flex-shrink:0;transition:background .2s"
-               onclick="event.stopPropagation();toggleHabitToday(${h.id},'${todayKey}',this)">${h.emoji}</div>
+               onclick="event.stopPropagation();toggleHabit(${h.id},'${todayKey}')">${h.emoji}</div>
           <div class="hfr-inf" style="flex:1;min-width:0">
             <div class="hfr-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isDone?'text-decoration:line-through;opacity:.5':''}">${h.name}</div>
             <div class="hfr-meta" style="font-size:.65rem">🔥${getHabitStreak(h)} дн. ${isDone?'· <span style=\"color:var(--mint)\">Выполнено ✓</span>':''}</div>
             ${buildHabitSparkline(h)}
           </div>
           <div class="habit-chk ${isDone?'done':'open'}" style="flex-shrink:0;cursor:pointer"
-               onclick="event.stopPropagation();toggleHabitToday(${h.id},'${todayKey}',this)">${isDone?'✓':''}</div>
+               onclick="event.stopPropagation();toggleHabit(${h.id},'${todayKey}')">${isDone?'✓':''}</div>
         </div>
         <div class="hab-swipe-actions">
           <button class="hab-sw-tips" onclick="event.stopPropagation();swipeHabit(${h.id});openHabitTips(${h.id})"><span>💡</span><span>Советы</span></button>
@@ -670,9 +670,7 @@ function renderToday() {
           <button class="hab-sw-del"  onclick="event.stopPropagation();swipeHabit(${h.id});deleteHabitConfirm(${h.id})"><span>🗑</span><span>Удал.</span></button>
         </div>
       </div>`;
-    }).join('') + (DB.habits.length > 3
-      ? `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:8px 0">ещё ${DB.habits.length - 3} — открой «Система»</div>`
-      : '');
+    }).join('') + (DB.habits.length > 6 ? `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:8px 0">+${DB.habits.length-6} ещё — открой «Система»</div>` : '');
   }
 
   // Attach swipe gestures to today habits
@@ -724,7 +722,7 @@ function drawRing(pct, color, size, stroke, textVal, subVal) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const filled = Math.min(Math.max(pct, 0), 100);
-  const dash = (filled / 100 * circ).toFixed(1);
+  const dash = filled / 100 * circ;
   const fs = size > 90 ? '1rem' : size > 76 ? '.82rem' : '.7rem';
   const animId = 'ring-' + Math.random().toString(36).substr(2, 9);
   return `<div class="ring-wrap" style="width:${size}px;height:${size}px">
@@ -732,29 +730,31 @@ function drawRing(pct, color, size, stroke, textVal, subVal) {
       <defs>
         <filter id="glow-${animId}" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
         </filter>
       </defs>
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="${stroke}"/>
       <circle id="${animId}" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
         stroke-dasharray="0 ${circ.toFixed(1)}" stroke-dashoffset="${(circ/4).toFixed(1)}"
         stroke-linecap="round" filter="url(#glow-${animId})"
-        data-target="${dash} ${circ.toFixed(1)}"
         style="transition:stroke-dasharray 1.2s cubic-bezier(.34,1.56,.64,1)"/>
     </svg>
     <div class="ring-inner">
       <div class="ring-val" style="font-size:${fs};color:${color};text-shadow:0 0 10px ${color}66">${textVal}</div>
       ${subVal ? `<div class="ring-sub">${subVal}</div>` : ''}
     </div>
-  </div>`;
-}
-
-function _animateRings(container) {
-  const circles = (container || document).querySelectorAll('circle[data-target]');
-  circles.forEach(c => {
-    const target = c.dataset.target;
-    setTimeout(() => { c.style.strokeDasharray = target; }, 80);
-  });
+  </div>
+  <script>
+    (function(){
+      setTimeout(function(){
+        const c = document.getElementById('${animId}');
+        if(c) c.style.strokeDasharray = '${dash.toFixed(1)} ${circ.toFixed(1)}';
+      }, 100);
+    })();
+  <\/script>`;
 }
 
 function getLast6Months() {
@@ -798,7 +798,6 @@ function renderGrowth() {
       `<div class="ring-cell">${drawRing(stats.savingsRate*5, srColor, 86, 7, stats.savingsRate+'%', 'сбережений')}<div class="ring-label">Норма сбережений</div></div>` +
       `<div class="ring-cell">${drawRing(goalPct, goalColor, 100, 8, goalPct+'%', 'к цели')}<div class="ring-label">Прогресс к цели</div></div>` +
       `<div class="ring-cell">${drawRing(score||0, scoreColor, 86, 7, score !== null ? score : '—', 'баллов')}<div class="ring-label">Финздоровье</div></div>`;
-    setTimeout(() => _animateRings(ringsEl), 150);
   }
 
   // ② Budget
@@ -3390,7 +3389,6 @@ function openSettings() {
   if (!DB.settings) DB.settings = {};
   // Load AI key into field
   loadAIKeyField();
-  updateAIKeyStatus();
   // Security
   setSegActive('lock-timeout-seg', DB.settings.lockTimeout ?? 0);
   // Display
@@ -3402,29 +3400,19 @@ function openSettings() {
   setSegActive('savings-rate-seg', DB.settings.savingsRate || 20);
   const rateEl = document.getElementById('set-rate-display');
   if (rateEl) rateEl.textContent = (DB.settings.selectedRate || 10) + '%';
-  // Notifications — read from NOTIF_KEY (separate store, not DB.settings)
-  const ns = (typeof getNotifSettings === 'function') ? getNotifSettings() : {};
+  // Notifications
+  const email = document.getElementById('set-email');
+  if (email) email.value = DB.user.email || '';
   const notifTime = document.getElementById('set-notif-time');
-  if (notifTime) notifTime.value = ns.reminderTime || '20:00';
+  if (notifTime) notifTime.value = DB.settings.notifTime || '20:00';
   const togPush = document.getElementById('tog-push');
-  const isPushOn = !!ns.pushEnabled && (typeof Notification !== 'undefined') && Notification.permission === 'granted';
-  if (togPush) togPush.checked = isPushOn;
-  updatePushStatusLabel();
+  if (togPush) togPush.checked = !!DB.settings.pushEnabled;
+  const pushLabel = document.getElementById('push-status-label');
+  if (pushLabel) pushLabel.textContent = DB.settings.pushEnabled ? 'Включены' : 'Нажмите чтобы включить';
   ['payments','budget','habits','weekly','ai'].forEach(k => {
     const el = document.getElementById('nt-' + k);
-    if (el) el.checked = ns.types ? (ns.types[k] !== false) : true;
+    if (el) el.checked = DB.settings['nt_' + k] !== false;
   });
-  // AI personality
-  const personality = DB.settings.aiPersonality || 'coach';
-  document.querySelectorAll('.sett-ai-role').forEach(el => {
-    el.classList.toggle('active', el.dataset.personality === personality);
-  });
-  // Autopilot toggle + sliders
-  const apEl = document.getElementById('set-autopilot-enabled');
-  if (apEl) apEl.checked = !!DB.settings.autopilotEnabled;
-  const detail = document.getElementById('ap-settings-detail');
-  if (detail) detail.style.display = DB.settings.autopilotEnabled ? 'block' : 'none';
-  syncApSliders();
   openSheet('settings');
 }
 
@@ -3780,35 +3768,36 @@ function showNextAchievementPopup() {
 }
 
 function showAchievementPopup(ach) {
-  const popup  = document.getElementById('achievement-popup');
-  const bg     = document.getElementById('ach-popup-bg');
-  const card   = document.getElementById('ach-popup-card');
+  const popup = document.getElementById('achievement-popup');
+  const bg    = document.getElementById('ach-popup-bg');
+  const card  = document.getElementById('ach-popup-card');
   const iconEl = document.getElementById('ach-popup-icon');
   const nameEl = document.getElementById('ach-popup-name');
   const descEl = document.getElementById('ach-popup-desc');
   const glowEl = document.getElementById('ach-popup-glow');
   const raysEl = document.getElementById('ach-rays');
-  const pillEl = document.getElementById('ach-xp-pill');
 
   window._currentAch = ach;
 
-  // Remove any dynamically-injected old badge elements (legacy cleanup)
-  card.querySelectorAll('.ach-xp-badge').forEach(el => el.remove());
-
-  // Update pill text
-  if (pillEl) {
-    pillEl.textContent = ach.xp ? `+${ach.xp} XP` : '🏆 Достигнуто';
-  }
-
-  // Rays SVG — centered behind icon (~top 28% of content area)
-  const rays = Array.from({length: 16}, (_, i) => {
-    const a = (i / 16) * 360, len = 60 + (i % 3) * 30;
-    const x = 50 + Math.cos(a * Math.PI / 180) * len;
-    const y = 50 + Math.sin(a * Math.PI / 180) * len;
-    return `<line x1="50%" y1="50%" x2="${x}%" y2="${y}%" stroke="rgba(245,200,66,${.05 + i % 3 * .06})" stroke-width="${1 + i % 2}"/>`;
+  // Rays SVG — 16 lines rotating
+  const rays = Array.from({length:16}, (_,i) => {
+    const a = (i/16)*360, len = 60 + (i%3)*30;
+    const x = 50 + Math.cos(a*Math.PI/180)*len, y = 50 + Math.sin(a*Math.PI/180)*len;
+    return `<line x1="50%" y1="50%" x2="${x}%" y2="${y}%" stroke="rgba(245,200,66,${.05+i%3*.06})" stroke-width="${1+i%2}"/>`;
   }).join('');
   raysEl.innerHTML = `<svg width="100%" height="100%" style="position:absolute;inset:0;overflow:visible">${rays}</svg>`;
   raysEl.style.animation = 'achRaysSpin 12s linear infinite';
+
+  // Inject XP badge into card (after desc)
+  let xpBadge = descEl.nextElementSibling;
+  if (!xpBadge || !xpBadge.classList.contains('ach-xp-badge')) {
+    xpBadge = document.createElement('div');
+    xpBadge.className = 'ach-xp-badge';
+    xpBadge.style.cssText = 'display:inline-block;margin:10px auto 0;padding:5px 14px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:20px;font-size:.75rem;font-weight:800;color:var(--gold)';
+    descEl.after(xpBadge);
+  }
+  xpBadge.textContent = ach.xp ? '+' + ach.xp + ' XP' : '🏆 Достигнуто';
+  xpBadge.style.transform = 'translateY(-4px)';
 
   iconEl.textContent = ach.icon;
   nameEl.textContent = ach.name;
@@ -3824,17 +3813,6 @@ function showAchievementPopup(ach) {
       glowEl.style.opacity = '1';
       iconEl.className = 'ach-popup-icon-anim';
       _launchConfetti(card);
-      // Position rays center behind icon after render
-      if (iconEl && raysEl) {
-        const cardRect = card.getBoundingClientRect();
-        const iconRect = iconEl.getBoundingClientRect();
-        if (cardRect.height > 0) {
-          const pct = ((iconRect.top + iconRect.height / 2) - cardRect.top) / cardRect.height * 100;
-          raysEl.style.top = pct.toFixed(1) + '%';
-          const glowBg = glowEl.querySelector('div');
-          if (glowBg) glowBg.style.top = pct.toFixed(1) + '%';
-        }
-      }
     }, 120);
   });
 
@@ -3902,18 +3880,25 @@ function showAchievementDetail(id) {
   if (ach) showAchievementPopup(ach);
 }
 
-function shareAchievementNative() {
+function shareAchievement(platform) {
   const ach = window._currentAch;
   if (!ach) return;
-  const text = `🏆 Получил достижение «${ach.name}» в Nobile! ${ach.icon}\n${ach.desc || ''}\nФинансовый трекер для роста 💪`;
-  if (navigator.share) {
-    navigator.share({ title: 'Nobile — достижение', text }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(text).then(() => showToast('✅ Текст скопирован')).catch(() => {});
+  const text = `🏆 Я получил достижение "${ach.name}" в приложении Nobile! ${ach.icon}\n${ach.desc || ''}\nФинансовый трекер: попробуй сам 💪`;
+  const encoded = encodeURIComponent(text);
+  if (platform === 'telegram') {
+    window.open(`https://t.me/share/url?url=https://nobile.app&text=${encoded}`, '_blank');
+  } else if (platform === 'vk') {
+    window.open(`https://vk.com/share.php?title=${encoded}`, '_blank');
+  } else if (platform === 'copy') {
+    navigator.clipboard?.writeText(text).then(() => {
+      const btn = document.getElementById('ach-share-copy');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✅ Скопировано';
+      btn.style.color = 'var(--mint)';
+      setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+    });
   }
 }
-function shareAchievement() { shareAchievementNative(); }
-
 
 function saveSettings() {
   const name = document.getElementById('set-name').value.trim();
@@ -5292,13 +5277,7 @@ function dismissAlert(i) {
     _loadingTimer = setTimeout(() => {
       const el = document.getElementById('splash-screen');
       if (!el) return;
-      // Hide brand text during loading reuse (show only lottie)
-      const brand = el.querySelector('.splash-brand');
-      if (brand) brand.style.visibility = 'hidden';
       el.classList.remove('hidden', 'hiding');
-      // Restart lottie so canvas is never blank
-      const inst = _lottieInstances['splash-lottie-container'];
-      if (inst) { inst.goToAndPlay(0, true); }
       _loadingShown = true;
     }, 300);
   };
@@ -5306,12 +5285,6 @@ function dismissAlert(i) {
   window._hideLoadingOverlay = function() {
     if (_loadingTimer) { clearTimeout(_loadingTimer); _loadingTimer = null; }
     if (_loadingShown) {
-      // Restore brand visibility for real splash (if ever reused)
-      const el = document.getElementById('splash-screen');
-      if (el) {
-        const brand = el.querySelector('.splash-brand');
-        if (brand) brand.style.visibility = '';
-      }
       _splashDone = false; // allow hide again
       hideSplash();
       _loadingShown = false;
@@ -5375,117 +5348,3 @@ function dismissAlert(i) {
   const _origNav = window.showPage || null;
 
 })();
-
-/* ══════════════════════════════════════
-   SETTINGS v2 — helper functions
-══════════════════════════════════════ */
-
-// Toggle API key visibility
-function toggleAIKeyVisibility() {
-  const inp = document.getElementById('set-ai-api-key');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-// Show green dot if key looks valid (starts with sk-ant-)
-function updateAIKeyStatus() {
-  const key = getAIKey();
-  const dot = document.getElementById('ai-key-status');
-  if (!dot) return;
-  dot.style.background = key && key.startsWith('sk-ant-') ? '#2DE8B0' : 'var(--dim)';
-}
-
-// Select AI personality
-function selectAIPersonality(personality) {
-  if (!DB.settings) DB.settings = {};
-  DB.settings.aiPersonality = personality;
-  saveDB();
-  document.querySelectorAll('.sett-ai-role').forEach(el => {
-    el.classList.toggle('active', el.dataset.personality === personality);
-  });
-  // also sync old grid if it exists
-  document.querySelectorAll('.ai-personality-card').forEach(el => {
-    el.classList.toggle('active', el.dataset.personality === personality);
-  });
-  showToast('🎭 Роль: ' + {conservative:'Казначей',aggressive:'Инвестор',coach:'Коуч'}[personality]);
-}
-
-// Notification accordion
-function toggleNotifAccordion() {
-  const el = document.getElementById('notif-accordion');
-  const arrow = document.getElementById('notif-accordion-arrow');
-  if (!el) return;
-  const open = el.style.display === 'none' || el.style.display === '';
-  el.style.display = open ? 'block' : 'none';
-  if (arrow) arrow.style.transform = open ? 'rotate(90deg)' : '';
-}
-
-// Autopilot sliders — proportional resize of others
-function onApSlider(key, rawVal) {
-  const keys = ['life','goals','savings','goalcontrib'];
-  const vals = {};
-  keys.forEach(k => {
-    vals[k] = parseInt(document.getElementById('ap-pct-' + k)?.value) || 0;
-  });
-  vals[key] = parseInt(rawVal);
-
-  // Clamp total to 100 by shrinking others proportionally
-  const sum = keys.reduce((s,k) => s + vals[k], 0);
-  if (sum !== 100) {
-    const others = keys.filter(k => k !== key);
-    const otherSum = others.reduce((s,k) => s + vals[k], 0);
-    const diff = sum - 100;
-    if (otherSum > 0) {
-      others.forEach(k => {
-        vals[k] = Math.max(0, Math.round(vals[k] - diff * (vals[k] / otherSum)));
-      });
-    }
-    // Fix rounding
-    const newSum = keys.reduce((s,k) => s + vals[k], 0);
-    if (newSum !== 100) vals[others[0]] += (100 - newSum);
-  }
-
-  keys.forEach(k => {
-    const inp = document.getElementById('ap-pct-' + k);
-    const lbl = document.getElementById('ap-lbl-' + k);
-    if (inp) inp.value = vals[k];
-    if (lbl) lbl.textContent = vals[k] + '%';
-  });
-
-  // Update total bar
-  const total = keys.reduce((s,k) => s + vals[k], 0);
-  const track = document.getElementById('ap-total-track');
-  const label = document.getElementById('ap-total-label');
-  const warn  = document.getElementById('ap-pct-warning');
-  if (track) track.style.width = Math.min(100, total) + '%';
-  if (track) track.style.background = total === 100 ? 'linear-gradient(90deg,#2DE8B0,#F5C842)' : '#FF6B6B';
-  if (label) { label.textContent = 'Сумма: ' + total + '%'; label.style.color = total === 100 ? 'var(--mint)' : 'var(--coral)'; }
-  if (warn) warn.style.display = total !== 100 ? 'block' : 'none';
-
-  // Update formula subtitle
-  const sub = document.getElementById('ap-formula-sub');
-  if (sub) sub.textContent = `Формула: ${vals.life}/${vals.goals}/${vals.savings}/${vals.goalcontrib}`;
-
-  saveAutopilotSettings();
-}
-
-// Sync autopilot sliders from DB on open
-function syncApSliders() {
-  if (!DB.settings) return;
-  const ap = DB.settings.autopilot || {};
-  const map = {life: ap.life||50, goals: ap.goals||30, savings: ap.savings||10, goalcontrib: ap.goalContrib||10};
-  Object.entries(map).forEach(([k,v]) => {
-    const inp = document.getElementById('ap-pct-' + k);
-    const lbl = document.getElementById('ap-lbl-' + k);
-    if (inp) inp.value = v;
-    if (lbl) lbl.textContent = v + '%';
-  });
-  const total = Object.values(map).reduce((s,v) => s+v, 0);
-  const track = document.getElementById('ap-total-track');
-  const label = document.getElementById('ap-total-label');
-  if (track) { track.style.width = '100%'; track.style.background = total===100?'linear-gradient(90deg,#2DE8B0,#F5C842)':'#FF6B6B'; }
-  if (label) { label.textContent = 'Сумма: ' + total + '%'; }
-  const sub = document.getElementById('ap-formula-sub');
-  if (sub) sub.textContent = `Формула: ${map.life}/${map.goals}/${map.savings}/${map.goalcontrib}`;
-}
-
