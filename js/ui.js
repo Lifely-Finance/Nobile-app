@@ -3402,18 +3402,17 @@ function openSettings() {
   setSegActive('savings-rate-seg', DB.settings.savingsRate || 20);
   const rateEl = document.getElementById('set-rate-display');
   if (rateEl) rateEl.textContent = (DB.settings.selectedRate || 10) + '%';
-  // Notifications
-  const email = document.getElementById('set-email');
-  if (email) email.value = DB.user.email || '';
+  // Notifications — read from NOTIF_KEY (separate store, not DB.settings)
+  const ns = (typeof getNotifSettings === 'function') ? getNotifSettings() : {};
   const notifTime = document.getElementById('set-notif-time');
-  if (notifTime) notifTime.value = DB.settings.notifTime || '20:00';
+  if (notifTime) notifTime.value = ns.reminderTime || '20:00';
   const togPush = document.getElementById('tog-push');
-  if (togPush) togPush.checked = !!DB.settings.pushEnabled;
-  const pushLabel = document.getElementById('push-status-label');
-  if (pushLabel) pushLabel.textContent = DB.settings.pushEnabled ? 'Включены' : 'Нажмите чтобы включить';
+  const isPushOn = !!ns.pushEnabled && (typeof Notification !== 'undefined') && Notification.permission === 'granted';
+  if (togPush) togPush.checked = isPushOn;
+  updatePushStatusLabel();
   ['payments','budget','habits','weekly','ai'].forEach(k => {
     const el = document.getElementById('nt-' + k);
-    if (el) el.checked = DB.settings['nt_' + k] !== false;
+    if (el) el.checked = ns.types ? (ns.types[k] !== false) : true;
   });
   // AI personality
   const personality = DB.settings.aiPersonality || 'coach';

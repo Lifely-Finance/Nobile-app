@@ -4155,11 +4155,23 @@ function loadNotifSettingsUI() {
 function updatePushStatusLabel() {
   const el = document.getElementById('push-status-label');
   if (!el) return;
-  if (!('Notification' in window)) { el.textContent = 'Не поддерживается браузером'; return; }
+  if (typeof Notification === 'undefined') {
+    el.textContent = 'Не поддерживается браузером';
+    el.style.color = 'var(--coral)';
+    return;
+  }
   const perm = Notification.permission;
-  if (perm === 'granted') el.textContent = '✓ Включены и работают';
-  else if (perm === 'denied') el.textContent = '✗ Заблокированы в браузере — разрешите в настройках сайта';
-  else el.textContent = 'Нажмите чтобы включить';
+  const ns   = getNotifSettings();
+  if (perm === 'granted' && ns.pushEnabled) {
+    el.innerHTML = '✓ Включены и работают';
+    el.style.color = 'var(--mint)';
+  } else if (perm === 'denied') {
+    el.innerHTML = '✗ Заблокированы — разрешите в настройках браузера';
+    el.style.color = 'var(--coral)';
+  } else {
+    el.textContent = 'Нажмите чтобы включить';
+    el.style.color = 'var(--muted)';
+  }
 }
 
 // ── Push Notifications — Service Worker based ──
@@ -4194,7 +4206,7 @@ async function togglePushNotif(enabled) {
     scheduleNotifications();
 
     // Welcome notification via SW
-    await sendPush('🔔 Nobile уведомления включены!', 'Напоминания о платежах и привычках активированы.');
+    await sendPush('🔔 Nobile уведомления включены!', 'Напоминания о платежах и привычках активированы.', 'nobile-welcome', 'welcome');
     showToast('🔔 Пуш-уведомления включены!');
 
   } else {
@@ -4209,20 +4221,30 @@ async function togglePushNotif(enabled) {
 }
 
 // Send notification via Service Worker (works in PWA on Android) or fallback to Notification API
-async function sendPush(title, body, tag = 'nobile') {
-  if (Notification.permission !== 'granted') return;
+async function sendPush(title, body, tag = 'nobile', category = 'default', extra = {}) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try {
     // Prefer Service Worker showNotification (required for Android PWA)
-    const reg = window._swReg || await navigator.serviceWorker?.ready;
+    const reg = window._swReg || (navigator.serviceWorker ? await navigator.serviceWorker.ready : null);
+    if (reg && reg.active) {
+      reg.active.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title, body, tag, category,
+        amount: extra.amount,
+        date:   extra.date
+      });
+      return;
+    }
+    // Also try showNotification directly on registration
     if (reg && reg.showNotification) {
       await reg.showNotification(title, {
-        body,
-        tag,
+        body, tag,
         icon: './icons/nobile-logo-192.png',
-        badge: './icons/nobile-logo-192.png',
-        vibrate: [100, 50, 100],
+        badge: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='18' fill='white'/><text x='50%' y='72' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='64' fill='black'>N</text></svg>`,
+        vibrate: [150, 80, 150],
         requireInteraction: false,
-        silent: false
+        silent: false,
+        data: { category, url: './' }
       });
       return;
     }
@@ -4235,6 +4257,24 @@ async function sendPush(title, body, tag = 'nobile') {
     });
     n.onclick = () => { window.focus(); n.close(); };
     setTimeout(() => n.close(), 8000);
+  } catch(e) {}
+}
+
+// Periodic keepalive: send current data to SW so it can check payments in background
+function _notifKeepalive() {
+  try {
+    const reg = window._swReg;
+    if (!reg || !reg.active) return;
+    const ns = getNotifSettings();
+    if (!ns.pushEnabled || Notification.permission !== 'granted') return;
+    if (!ns.types?.payments) return;
+    reg.active.postMessage({
+      type: 'SCHEDULE_CHECK',
+      payload: {
+        recurringPayments: DB.recurringPayments || [],
+        todayKey: todayISO()
+      }
+    });
   } catch(e) {}
 }
 
@@ -4253,6 +4293,12 @@ function scheduleNotifications() {
 
   const now = new Date();
 
+  // ── Keepalive: send data to SW every 30 min so it can check payments ──
+  const keepalive = setInterval(() => _notifKeepalive(), 30 * 60 * 1000);
+  _notifTimers.push(keepalive);
+  // Run once immediately
+  setTimeout(_notifKeepalive, 3000);
+
   // ── Daily reminder at set time ──
   if (ns.types.habits) {
     const [hh, mm] = (ns.reminderTime || '20:00').split(':').map(Number);
@@ -4269,7 +4315,7 @@ function scheduleNotifications() {
         sendPush(
           `⚡ Привычки: ${undone.length} не выполнено`,
           undone.slice(0,3).map(h=>h.name).join(', ') + (undone.length>3?` +${undone.length-3} ещё`:''),
-          'habits'
+          'habits', 'habit'
         );
       }
       // Re-schedule for next day
@@ -4295,7 +4341,7 @@ function scheduleNotifications() {
         sendPush(
           `⏰ Платёж: ${r.name}`,
           `${r.amount.toLocaleString('ru')} ₽ — ${when} (${r.dayOfMonth} числа)`,
-          `payment-${r.id}`
+          `payment-${r.id}`, 'payment', {amount: r.amount, date: r.dayOfMonth}
         );
       });
     };
@@ -4318,7 +4364,7 @@ function scheduleNotifications() {
       sendPush(
         '📊 Недельная сводка Nobile',
         `Доходы: +${stats.income.toLocaleString('ru')} ₽ · Расходы: −${stats.expense.toLocaleString('ru')} ₽ · Баланс: ${stats.balance.toLocaleString('ru')} ₽`,
-        'weekly'
+        'weekly', 'weekly'
       );
     }, nextSunday - now);
     _notifTimers.push(t);
@@ -4329,7 +4375,7 @@ function scheduleNotifications() {
 function triggerBudgetPush(title, body) {
   const ns = getNotifSettings();
   if (!ns.pushEnabled || !ns.types.budget) return;
-  sendPush(title, body, 'budget');
+  sendPush(title, body, 'budget', 'budget');
 }
 
 // ── Email System (mailto-based, universal) ──
@@ -4424,7 +4470,7 @@ setTimeout(() => {
       return diff === 0;
     });
     urgent.forEach(r => {
-      sendPush(`⏰ Платёж сегодня: ${r.name}`, `${r.amount.toLocaleString('ru')} ₽ нужно оплатить сегодня`, `payment-today-${r.id}`);
+      sendPush(`⏰ Платёж сегодня: ${r.name}`, `${r.amount.toLocaleString('ru')} ₽ нужно оплатить сегодня`, `payment-today-${r.id}`, 'payment', {amount: r.amount});
     });
   }
 }, 2000);
