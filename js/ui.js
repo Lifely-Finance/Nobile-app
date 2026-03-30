@@ -1309,14 +1309,12 @@ async function loadPlannerAIHint() {
   if (moodLabel) ctxParts.push(`настроение: ${moodLabel}`);
   const dayLabel = isToday ? 'сегодня' : isPast ? `${date}` : `предстоящий день ${date}`;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:getAIHeaders(),
-      body: JSON.stringify({ model:'claude-3-haiku-20240307', max_tokens:120,
-        messages:[{role:'user',content:`Планер Nobile. День: ${dayLabel}. ${ctxParts.join(', ')}. Дай короткий (1-2 предложения) практичный совет или мотивацию. Только текст, без emoji в начале.`}]
-      })
+    const d = await callAI({
+      model:'claude-3-haiku-20240307',
+      max_tokens:120,
+      messages:[{role:'user',content:`Планер Nobile. День: ${dayLabel}. ${ctxParts.join(', ')}. Дай короткий (1-2 предложения) практичный совет или мотивацию. Только текст, без emoji в начале.`}]
     });
-    const d = await r.json();
-    const text = d.content?.[0]?.text?.trim();
+    const text = extractAIText(d);
     if (text) { textEl.textContent = text; hintEl.style.display = 'block'; }
   } catch(e) {
     textEl.textContent = total > 0 ? (done === total ? 'Все задачи выполнены — отличная работа!' : `Осталось ${total-done} ${total-done===1?'задача':'задач'}. Не откладывай.`) : '';
@@ -3388,9 +3386,9 @@ let _alertThreshold = 85;
 
 function openSettings() {
   if (!DB.settings) DB.settings = {};
-  // Load AI key into field
-  loadAIKeyField();
-  updateAIKeyStatus();
+  // Load AI proxy URL into field
+  loadAIProxyField();
+  updateAIProxyStatus();
   // Security
   setSegActive('lock-timeout-seg', DB.settings.lockTimeout ?? 0);
   // Display
@@ -3569,9 +3567,9 @@ function adjustRate(delta) {
 }
 
 function closeModal(id){var el=document.getElementById(id);if(el)el.remove();}
-function exportData(){try{var obj={_info:{app:"Nobile",date:new Date().toISOString()},data:DB};var json=JSON.stringify(obj,null,2);var fname="nobile-backup-"+todayISO()+".json";_openExpM(json,fname);}catch(e){showToast("Ошибка: "+e.message);}}
+function exportData(){try{DB=normalizeDB(DB);var obj={_info:{app:"Nobile",date:new Date().toISOString(),schemaVersion:DB.schemaVersion||DB_SCHEMA_VERSION},data:DB};var json=JSON.stringify(obj,null,2);var fname="nobile-backup-"+todayISO()+".json";_openExpM(json,fname);}catch(e){showToast("Ошибка: "+e.message);}}
 function _openExpM(json,fname){var id="_em_";var ex=document.getElementById(id);if(ex)ex.remove();var ov=document.createElement("div");ov.id=id;ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:29999;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box";var box=document.createElement("div");box.style.cssText="background:var(--s1);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box";var kb=Math.round(json.length/1024);var txn=(DB.transactions||[]).length;var hdr=document.createElement("div");hdr.textContent="Резервная копия "+fname+" "+kb+" KB";hdr.style.cssText="font-family:Syne,sans-serif;font-size:.9rem;font-weight:800;margin-bottom:4px";box.appendChild(hdr);var ta=document.createElement("textarea");ta.value=json;ta.readOnly=true;ta.style.cssText="height:80px;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:#8b949e;font-size:.44rem;padding:8px;font-family:monospace;resize:none;width:100%;box-sizing:border-box";ta.addEventListener("focus",function(){ta.select();ta.setSelectionRange(0,99999);});box.appendChild(ta);var st=document.createElement("div");st.style.cssText="font-size:.72rem;color:var(--muted);text-align:center";st.textContent="Скопируйте и вставьте в Telegram Избранное";box.appendChild(st);var bc=document.createElement("button");bc.style.cssText="background:var(--blue);border:none;color:white;padding:14px;border-radius:14px;font-family:Syne,sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;width:100%";bc.textContent="Скопировать в буфер обмена";bc.addEventListener("click",function(){ta.select();ta.setSelectionRange(0,99999);var ok=function(){bc.textContent="Скопировано!";bc.style.background="rgba(45,232,176,.2)";bc.style.color="var(--mint)";};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(json).then(ok).catch(function(){try{document.execCommand("copy");ok();}catch(ex){}});}else{try{document.execCommand("copy");ok();}catch(ex){}}});box.appendChild(bc);if(typeof navigator.share==="function"){var bs=document.createElement("button");bs.style.cssText="background:var(--s2);border:1px solid var(--line);color:var(--text);padding:13px;border-radius:14px;font-family:Syne,sans-serif;font-size:.86rem;font-weight:700;cursor:pointer;width:100%";bs.textContent="Поделиться (Telegram, Drive...)";bs.addEventListener("click",function(){var sd={title:"Nobile Backup",text:json};try{var f=new File([json],fname,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]}))sd.files=[f];}catch(ex){}navigator.share(sd).then(function(){st.textContent="Отправлено!";st.style.color="var(--mint)";}).catch(function(ex){if(ex.name!="AbortError"){st.textContent="Не удалось";st.style.color="var(--coral)";}});});box.appendChild(bs);}var bx=document.createElement("button");bx.style.cssText="background:none;border:none;color:var(--muted);padding:8px;cursor:pointer;width:100%;font-size:.8rem";bx.textContent="Закрыть";bx.addEventListener("click",function(){ov.remove();});box.appendChild(bx);ov.appendChild(box);document.body.appendChild(ov);ov.addEventListener("click",function(ev){if(ev.target===ov)ov.remove();});}
-function importData(){var id="_im_";var ex=document.getElementById(id);if(ex)ex.remove();var ov=document.createElement("div");ov.id=id;ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:29999;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box";var box=document.createElement("div");box.style.cssText="background:var(--s1);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;max-height:90vh;overflow-y:auto";var hdr=document.createElement("div");hdr.textContent="Импорт данных";hdr.style.cssText="font-family:Syne,sans-serif;font-size:.9rem;font-weight:800;margin-bottom:6px";var sub2=document.createElement("div");sub2.style.cssText="font-size:.74rem;color:var(--muted)";sub2.textContent="Вставьте JSON резервной копии ниже. Текущие данные будут заменены.";box.appendChild(sub2);box.appendChild(hdr);var ta=document.createElement("textarea");ta.placeholder="Вставьте сюда JSON из буфера обмена...";ta.style.cssText="height:140px;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:.7rem;padding:10px;font-family:monospace;resize:none;width:100%;box-sizing:border-box";box.appendChild(ta);var lbl=document.createElement("div");lbl.style.cssText="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer";lbl.innerHTML="<span>\uD83D\uDCCE</span><div><div style='font-size:.84rem;font-weight:600'>Или выбрать .json файл</div><div style='font-size:.68rem;color:var(--muted)'>nobile-backup-YYYY-MM-DD.json</div></div>";var fi=document.createElement("input");fi.type="file";fi.accept=".json,application/json";fi.style.display="none";fi.addEventListener("change",function(){if(!fi.files[0])return;var r=new FileReader();r.onload=function(ev){ta.value=ev.target.result;st.textContent="Файл загружен";st.style.color="var(--mint)";};r.readAsText(fi.files[0]);});lbl.appendChild(fi);lbl.addEventListener("click",function(){fi.click();});box.appendChild(lbl);var st=document.createElement("div");st.style.cssText="font-size:.72rem;color:var(--muted);text-align:center;min-height:14px";box.appendChild(st);var br=document.createElement("button");br.style.cssText="background:var(--blue);border:none;color:white;padding:14px;border-radius:14px;font-family:Syne,sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;width:100%";br.textContent="Восстановить данные";br.addEventListener("click",function(){var raw=ta.value.trim();if(!raw){st.textContent="Вставьте данные";st.style.color="var(--coral)";return;}try{var parsed=JSON.parse(raw);var imp=parsed.data||parsed;if(!imp.user&&!imp.transactions)throw new Error("Неверный формат");DB=Object.assign({},DB,imp);if(_cryptoKey){saveDB().then(function(){renderAll();ov.remove();showToast("Данные восстановлены!");});}else{localStorage.setItem("nobile_db",JSON.stringify(DB));renderAll();ov.remove();showToast("Данные восстановлены!");}}catch(ex){st.textContent="Ошибка: "+ex.message;st.style.color="var(--coral)";}});box.appendChild(br);var bx2=document.createElement("button");bx2.style.cssText="background:none;border:none;color:var(--muted);padding:8px;cursor:pointer;width:100%;font-size:.8rem";bx2.textContent="Отмена";bx2.addEventListener("click",function(){ov.remove();});box.appendChild(bx2);ov.appendChild(box);document.body.appendChild(ov);ov.addEventListener("click",function(ev){if(ev.target===ov)ov.remove();});}
+function importData(){var id="_im_";var ex=document.getElementById(id);if(ex)ex.remove();var ov=document.createElement("div");ov.id=id;ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:29999;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box";var box=document.createElement("div");box.style.cssText="background:var(--s1);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;max-height:90vh;overflow-y:auto";var hdr=document.createElement("div");hdr.textContent="Импорт данных";hdr.style.cssText="font-family:Syne,sans-serif;font-size:.9rem;font-weight:800;margin-bottom:6px";var sub2=document.createElement("div");sub2.style.cssText="font-size:.74rem;color:var(--muted)";sub2.textContent="Вставьте JSON резервной копии ниже. Данные пройдут валидацию и миграцию схемы перед заменой.";box.appendChild(sub2);box.appendChild(hdr);var ta=document.createElement("textarea");ta.placeholder="Вставьте сюда JSON из буфера обмена...";ta.style.cssText="height:140px;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:.7rem;padding:10px;font-family:monospace;resize:none;width:100%;box-sizing:border-box";box.appendChild(ta);var lbl=document.createElement("div");lbl.style.cssText="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer";var ico=document.createElement("span");ico.textContent="📎";var lblText=document.createElement("div");var lblTitle=document.createElement("div");lblTitle.style.cssText="font-size:.84rem;font-weight:600";lblTitle.textContent="Или выбрать .json файл";var lblSub=document.createElement("div");lblSub.style.cssText="font-size:.68rem;color:var(--muted)";lblSub.textContent="nobile-backup-YYYY-MM-DD.json";lblText.appendChild(lblTitle);lblText.appendChild(lblSub);lbl.appendChild(ico);lbl.appendChild(lblText);var fi=document.createElement("input");fi.type="file";fi.accept=".json,application/json";fi.style.display="none";fi.addEventListener("change",function(){if(!fi.files[0])return;var r=new FileReader();r.onload=function(ev){ta.value=ev.target.result;st.textContent="Файл загружен";st.style.color="var(--mint)";};r.readAsText(fi.files[0]);});lbl.appendChild(fi);lbl.addEventListener("click",function(){fi.click();});box.appendChild(lbl);var meta=document.createElement("div");meta.style.cssText="font-size:.68rem;color:var(--muted);line-height:1.5;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:10px 12px";meta.textContent="Поддерживаются резервные копии старых версий: структура будет нормализована до актуальной схемы автоматически.";box.appendChild(meta);var st=document.createElement("div");st.style.cssText="font-size:.72rem;color:var(--muted);text-align:center;min-height:14px";box.appendChild(st);var br=document.createElement("button");br.style.cssText="background:var(--blue);border:none;color:white;padding:14px;border-radius:14px;font-family:Syne,sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;width:100%";br.textContent="Восстановить данные";br.addEventListener("click",function(){var raw=ta.value.trim();if(!raw){st.textContent="Вставьте данные";st.style.color="var(--coral)";return;}try{var parsed=JSON.parse(raw);var imported=validateImportedDB(parsed);DB=imported;var finish=function(){renderAll();ov.remove();showToast("Данные восстановлены");};if(_cryptoKey){saveDB().then(finish);}else{localStorage.setItem("nobile_db",JSON.stringify(DB));finish();}st.textContent="Импорт выполнен · schema v"+(DB.schemaVersion||DB_SCHEMA_VERSION);st.style.color="var(--mint)";}catch(ex){st.textContent="Ошибка: "+ex.message;st.style.color="var(--coral)";}});box.appendChild(br);var bx2=document.createElement("button");bx2.style.cssText="background:none;border:none;color:var(--muted);padding:8px;cursor:pointer;width:100%;font-size:.8rem";bx2.textContent="Отмена";bx2.addEventListener("click",function(){ov.remove();});box.appendChild(bx2);ov.appendChild(box);document.body.appendChild(ov);ov.addEventListener("click",function(ev){if(ev.target===ov)ov.remove();});}
 function selectAlertThreshold(el, val) {
   _alertThreshold = val;
   document.querySelectorAll('[onclick*="selectAlertThreshold"]').forEach(b => {
@@ -5380,20 +5378,16 @@ function dismissAlert(i) {
    SETTINGS v2 — helper functions
 ══════════════════════════════════════ */
 
-// Toggle API key visibility
-function toggleAIKeyVisibility() {
-  const inp = document.getElementById('set-ai-api-key');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-// Show green dot if key looks valid (starts with sk-ant-)
-function updateAIKeyStatus() {
-  const key = getAIKey();
+function updateAIProxyStatus() {
+  const endpoint = getAIProxyUrl();
   const dot = document.getElementById('ai-key-status');
   if (!dot) return;
-  dot.style.background = key && key.startsWith('sk-ant-') ? '#2DE8B0' : 'var(--dim)';
+  dot.style.background = endpoint ? '#2DE8B0' : 'var(--dim)';
 }
+
+// Совместимость с legacy inline-обработчиками
+function toggleAIKeyVisibility() { return; }
+function updateAIKeyStatus() { updateAIProxyStatus(); }
 
 // Select AI personality
 function selectAIPersonality(personality) {

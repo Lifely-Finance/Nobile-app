@@ -2674,30 +2674,15 @@ async function loadAIPredictiveRisks() {
   // Рендерим скелетоны немедленно
   renderPredictiveRisks(risks, null);
 
-  // Если нет API ключа — показываем математические дефолты
-  const key = getAIKey();
-  if (!key) {
-    const fallbacks = risks.map(r => _getRiskFallbackText(r));
-    risks.forEach((r, i) => updateRiskCardText(r.id, fallbacks[i]));
-    _riskCache = { risks, texts: fallbacks };
-    _riskCacheTime = now;
-    return;
-  }
-
   // Вызов ИИ — генерация всех текстов одним запросом
   try {
     const prompt = buildRiskAIPrompt(risks);
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: getAIHeaders(),
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const data = await callAI({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }]
     });
-    const data = await res.json();
-    const rawText = data.content?.[0]?.text?.trim() || '';
+    const rawText = extractAIText(data);
 
     // Парсим ответ — ищем [RISK_1], [RISK_2] ...
     const texts = risks.map((r, i) => {
@@ -2890,9 +2875,20 @@ async function loadAIAdvice() {
   const digestEl = document.getElementById('ai-digest');
   if (!digestEl) return;
   const rows = buildDigest();
-  digestEl.innerHTML = rows.map(r =>
-    `<div class="ai-digest-row"><span class="ai-digest-ico">${r.ico}</span><span class="ai-digest-${r.cls||'ok'}">${r.text}</span></div>`
-  ).join('');
+  digestEl.textContent = '';
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'ai-digest-row';
+    const icon = document.createElement('span');
+    icon.className = 'ai-digest-ico';
+    icon.textContent = r.ico;
+    const body = document.createElement('span');
+    body.className = `ai-digest-${r.cls||'ok'}`;
+    body.textContent = r.text;
+    row.appendChild(icon);
+    row.appendChild(body);
+    digestEl.appendChild(row);
+  });
   const statusEl = document.getElementById('ai-status-label');
   if (statusEl) {
     const hasUrgent = rows.some(r=>r.cls==='urgent');
@@ -2914,12 +2910,12 @@ async function loadAIInsight() {
 если есть срочный платёж — упомяни; если невыполненные задачи — напомни; если привычки не отмечены — мотивируй.
 Живой тон, без канцелярщины. Только текст.`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:getAIHeaders(),
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:180, messages:[{role:'user',content:prompt}] })
+    const data = await callAI({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:180,
+      messages:[{role:'user',content:prompt}]
     });
-    const data = await res.json();
-    const text = data.content?.[0]?.text?.trim();
+    const text = extractAIText(data);
     if (text) {
       if (_aiMessages.length === 0) {
         _aiMessages.push({ role:'assistant', content:text });
@@ -2930,7 +2926,15 @@ async function loadAIInsight() {
         const row = document.createElement('div');
         row.className = 'ai-digest-row';
         row.style.marginTop = '4px';
-        row.innerHTML = `<span class="ai-digest-ico">🤖</span><span style="color:var(--text);font-style:italic">${text}</span>`;
+        const icon = document.createElement('span');
+        icon.className = 'ai-digest-ico';
+        icon.textContent = '🤖';
+        const body = document.createElement('span');
+        body.style.color = 'var(--text)';
+        body.style.fontStyle = 'italic';
+        body.textContent = text;
+        row.appendChild(icon);
+        row.appendChild(body);
         digestEl.appendChild(row);
       }
     }
@@ -2949,13 +2953,25 @@ function toggleAIChat() {
 function renderChatMessages() {
   const el = document.getElementById('ai-messages');
   if (!el) return;
+  el.textContent = '';
   if (_aiMessages.length === 0) {
-    el.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:.75rem;padding:12px 0">Задайте любой вопрос о финансах,<br>привычках или задачах</div>`;
+    const empty = document.createElement('div');
+    empty.style.textAlign = 'center';
+    empty.style.color = 'var(--muted)';
+    empty.style.fontSize = '.75rem';
+    empty.style.padding = '12px 0';
+    empty.appendChild(document.createTextNode('Задайте любой вопрос о финансах,'));
+    empty.appendChild(document.createElement('br'));
+    empty.appendChild(document.createTextNode('привычках или задачах'));
+    el.appendChild(empty);
     return;
   }
-  el.innerHTML = _aiMessages.map(m =>
-    `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.content.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}</div>`
-  ).join('');
+  _aiMessages.forEach(m => {
+    const bubble = document.createElement('div');
+    bubble.className = `ai-msg ${m.role === 'user' ? 'user' : 'bot'}`;
+    bubble.innerHTML = formatSafeRichText(m.content, { allowBold: m.role !== 'user' });
+    el.appendChild(bubble);
+  });
   el.scrollTop = el.scrollHeight;
 }
 
@@ -3043,12 +3059,13 @@ ${ctx}
 Отвечай кратко (2-4 предложения), по делу, на русском. Используй конкретные цифры из данных пользователя где уместно.`;
   const msgs = _aiMessages.slice(0,-1).map(m=>({role:m.role,content:m.content}));
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:getAIHeaders(),
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:350, system:systemPrompt, messages:msgs })
+    const data = await callAI({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:350,
+      system:systemPrompt,
+      messages:msgs
     });
-    const data = await res.json();
-    const reply = data.content?.[0]?.text?.trim() || 'Не удалось получить ответ.';
+    const reply = extractAIText(data) || 'Не удалось получить ответ.';
     _aiMessages[_aiMessages.length-1] = { role:'assistant', content:reply };
   } catch(e) {
     _aiMessages[_aiMessages.length-1] = { role:'assistant', content:'Ошибка соединения. Проверьте интернет.' };
@@ -3068,17 +3085,41 @@ async function loadCurrency() {
     {code:'AED', flag:'🇦🇪', name:'Дирхам'},
   ];
 
+  function renderCurrencyRows(target, values, { approximate = false } = {}) {
+    if (!target) return;
+    target.textContent = '';
+    pairs.forEach(p => {
+      const raw = values[p.code];
+      if (!raw) return;
+      const rub = Math.round(raw * 100) / 100;
+      const row = document.createElement('div');
+      row.className = 'cur-row';
+      const left = document.createElement('div');
+      const flag = document.createElement('span');
+      flag.className = 'cur-flag';
+      flag.textContent = p.flag;
+      const name = document.createElement('span');
+      name.className = 'cur-name';
+      name.textContent = `${p.name} ${p.code}`;
+      left.appendChild(flag);
+      left.appendChild(name);
+      const right = document.createElement('div');
+      right.className = 'cur-val';
+      if (approximate) right.style.color = 'var(--muted)';
+      right.textContent = `${approximate ? '≈' : ''}${rub.toLocaleString('ru', {minimumFractionDigits:2, maximumFractionDigits:2})} ₽`;
+      row.appendChild(left);
+      row.appendChild(right);
+      target.appendChild(row);
+    });
+  }
+
   function renderRates(rates, source) {
+    DB.currencyRates = { ...rates };
+    saveDB();
+    if (typeof updateCurrencyLinkedCategories === 'function') updateCurrencyLinkedCategories();
     const listEl = document.getElementById('currency-list');
     const timeEl = document.getElementById('currency-time');
-    listEl.innerHTML = pairs.map(p => {
-      const rub = rates[p.code] ? Math.round(rates[p.code] * 100) / 100 : null;
-      if (!rub) return '';
-      return `<div class="cur-row">
-        <div><span class="cur-flag">${p.flag}</span><span class="cur-name">${p.name} ${p.code}</span></div>
-        <div class="cur-val">${rub.toLocaleString('ru', {minimumFractionDigits:2, maximumFractionDigits:2})} ₽</div>
-      </div>`;
-    }).join('');
+    renderCurrencyRows(listEl, rates);
     const now = new Date();
     timeEl.textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0') + ' · онлайн';
   }
@@ -3132,14 +3173,160 @@ async function loadCurrency() {
   } catch(e) {}
 
   // All failed — show last known rates (approximate)
-  document.getElementById('currency-list').innerHTML = pairs.map(p => {
-    const approx = {USD:90, EUR:98, CNY:12.5, AED:24.5}[p.code];
-    return `<div class="cur-row">
-      <div><span class="cur-flag">${p.flag}</span><span class="cur-name">${p.name} ${p.code}</span></div>
-      <div class="cur-val" style="color:var(--muted)">≈${approx} ₽</div>
-    </div>`;
-  }).join('');
+  DB.currencyRates = { USD: 90, EUR: 98, CNY: 12.5, AED: 24.5 };
+  saveDB();
+  if (typeof updateCurrencyLinkedCategories === 'function') updateCurrencyLinkedCategories();
+  renderCurrencyRows(document.getElementById('currency-list'), DB.currencyRates, { approximate: true });
   document.getElementById('currency-time').textContent = 'офлайн · приблизительно';
+}
+
+
+function getPersonalityPrompt(personality) {
+  const prompts = {
+    conservative: `Ты консервативный финансовый казначей. Твой стиль: осторожный, консервативный, акцент на безопасность и стабильность. Давай практичные советы по экономии, защите капитала и избеганию рисков. Используй умеренный, деловой тон.`,
+    aggressive: `Ты агрессивный инвестор. Твой стиль: амбициозный, ориентированный на рост, готов к риску ради высокой доходности. Давай советы по инвестициям, росту капитала и достижению финансовых целей быстрее. Используй энергичный, мотивирующий тон.`,
+    coach: `Ты психолог-коуч по финансам. Твой стиль: эмпатичный, поддерживающий, фокус на привычках и мышлении. Помогай пользователю понять эмоциональные триггеры трат и выработать здоровые финансовые привычки. Используй тёплый, поддерживающий тон.`
+  };
+  return prompts[personality] || prompts.coach;
+}
+
+async function analyzeMonthWithAI() {
+  const contentEl = document.getElementById('ai-analysis-content');
+  const overlayEl = document.getElementById('ai-analysis-overlay');
+  if (overlayEl) overlayEl.classList.add('open');
+  if (contentEl) {
+    contentEl.textContent = '';
+    const loading = document.createElement('div');
+    loading.style.textAlign = 'center';
+    loading.style.padding = '30px';
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+    spinner.style.width = '40px';
+    spinner.style.height = '40px';
+    spinner.style.borderWidth = '3px';
+    spinner.style.margin = '0 auto';
+    const text = document.createElement('div');
+    text.style.marginTop = '15px';
+    text.style.fontSize = '.8rem';
+    text.style.color = 'var(--muted)';
+    text.textContent = 'Анализируем ваши данные...';
+    loading.appendChild(spinner);
+    loading.appendChild(text);
+    contentEl.appendChild(loading);
+  }
+
+  try {
+    const analysisData = prepareAnonymizedData();
+    const personality = getAIPersonality();
+    const systemPrompt = getPersonalityPrompt(personality);
+    const data = await callAI({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: `Проанализируй мои финансовые данные за текущий месяц и дай персональные рекомендации:
+
+ДАННЫЕ:
+${JSON.stringify(analysisData, null, 2)}
+
+Пожалуйста, предоставь:
+1. Краткую сводку текущего финансового состояния
+2. Основные тренды и паттерны
+3. 3-5 конкретных рекомендаций
+4. Предупреждения о потенциальных проблемах (если есть)
+
+Ответ должен быть на русском языке, структурированным и практичным.`
+      }]
+    });
+    const analysis = extractAIText(data);
+    if (!analysis) throw new Error('Пустой ответ от AI proxy');
+
+    if (contentEl) {
+      contentEl.textContent = '';
+      const body = document.createElement('div');
+      body.style.padding = '10px';
+      body.style.lineHeight = '1.6';
+      body.style.fontSize = '.82rem';
+      body.style.color = 'var(--text)';
+      body.style.whiteSpace = 'pre-wrap';
+      body.textContent = analysis;
+      contentEl.appendChild(body);
+    }
+  } catch (err) {
+    if (contentEl) {
+      contentEl.textContent = '';
+      const wrap = document.createElement('div');
+      wrap.style.textAlign = 'center';
+      wrap.style.padding = '20px';
+      wrap.style.color = 'var(--coral)';
+      const icon = document.createElement('div');
+      icon.style.fontSize = '2rem';
+      icon.style.marginBottom = '10px';
+      icon.textContent = '⚠️';
+      const title = document.createElement('div');
+      title.textContent = 'Не удалось получить анализ. Проверьте AI proxy.';
+      const message = document.createElement('div');
+      message.style.fontSize = '.7rem';
+      message.style.marginTop = '10px';
+      message.style.color = 'var(--muted)';
+      message.textContent = err.message;
+      wrap.appendChild(icon);
+      wrap.appendChild(title);
+      wrap.appendChild(message);
+      contentEl.appendChild(wrap);
+    }
+  }
+}
+
+function closeAIAnalysis() {
+  document.getElementById('ai-analysis-overlay')?.classList.remove('open');
+}
+
+function prepareAnonymizedData() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthTx = DB.transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  const income = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+  const expenses = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
+  const categoryBreakdown = {};
+  monthTx.filter(t => t.type === 'expense').forEach(t => {
+    const cat = t.category || 'other';
+    categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + (t.amount || 0);
+  });
+
+  const monthSavings = DB.savings.filter(s => {
+    const d = new Date(s.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).reduce((s, item) => s + (item.amount || 0), 0);
+
+  return {
+    month: now.toLocaleString('ru', { month: 'long', year: 'numeric' }),
+    totalIncome: income,
+    totalExpenses: expenses,
+    netSavings: income - expenses,
+    savingsRate: income > 0 ? Math.round(((income - expenses) / income) * 100) : 0,
+    categoryBreakdown,
+    savingsAdded: monthSavings,
+    activeHabits: DB.habits.filter(h => h.active !== false).length,
+    goalProgress: calculateGoalProgress()
+  };
+}
+
+function calculateGoalProgress() {
+  const goal = DB.user?.goal || 0;
+  if (goal <= 0) return { target: 0, current: 0, percentage: 0 };
+
+  const current = DB.savings.reduce((s, item) => s + (item.amount || 0), 0);
+  const percentage = Math.min(100, Math.round((current / goal) * 100));
+
+  return { target: goal, current, percentage };
 }
 
 /* ═══════════════════════════════════════
@@ -3896,10 +4083,10 @@ function unlockPinDel() {
 
 async function handleUnlockPin() {
   const salt = getOrCreateSalt();
-  const hash = await hashPin(_unlockPinBuf, salt);
   const storedHash = localStorage.getItem(HASH_KEY);
+  const verify = await verifyPinHash(_unlockPinBuf, salt, storedHash);
 
-  if (hash !== storedHash) {
+  if (!verify.ok) {
     _unlockAttempts++;
     _unlockPinBuf = '';
     const el = document.getElementById('unlock-hint');
@@ -3914,6 +4101,12 @@ async function handleUnlockPin() {
   if (hintEl2) hintEl2.textContent = '';
   showAuthLoading('Расшифровка данных...');
   try {
+    if (verify.needsUpgrade) {
+      localStorage.setItem(HASH_KEY, verify.hash);
+      const authForUpgrade = getAuth() || {};
+      authForUpgrade.pinHash = verify.hash;
+      saveAuth(authForUpgrade);
+    }
     _cryptoKey = await deriveKey(_unlockPinBuf, salt);
     const ok = await loadDB();
     if (!ok) {
@@ -4029,7 +4222,7 @@ async function bootApp() {
 
   // Migration: old plaintext data, no auth yet
   if (!auth && hasPlain) {
-    try { const raw = localStorage.getItem('nobile_db'); if (raw) DB = { ...DB, ...JSON.parse(raw) }; } catch {}
+    try { const raw = localStorage.getItem('nobile_db'); if (raw) DB = normalizeDB(JSON.parse(raw)); } catch {}
     authShowView('welcome');
     return;
   }
@@ -4060,14 +4253,6 @@ async function bootApp() {
 }
 
 hydrateAuthSocialButtons();
-try { bootApp(); } catch(e) { console.error('Boot error:', e); }
-
-// Global: close habit swipe panels on outside tap
-document.addEventListener('click', e => {
-  if (!e.target.closest('.hab-swipe-wrap')) {
-    document.querySelectorAll('.hab-swipe-wrap.swiped').forEach(w => w.classList.remove('swiped'));
-  }
-});
 
 // Header profile menu — wired after DOM is ready
 (function() {
@@ -4098,10 +4283,6 @@ function closeProfMenu() {
   const menu = document.getElementById('prof-menu');
   if (menu) menu.classList.remove('open');
 }
-
-// Set today's date in tx form (safe)
-const _txDateEl = document.getElementById('tx-date');
-if (_txDateEl) _txDateEl.value = todayISO();
 
 /* ═══════════════════════════════════════
    NOTIFICATION SYSTEM
@@ -4601,7 +4782,8 @@ function showAutopilotModal(plan) {
     aiText = `Доход на <b>${pct}% выше</b> обычного! Увеличил долю накоплений — это отличный момент чтобы ускорить прогресс к цели.`;
   }
 
-  document.getElementById('ap-ai-text').innerHTML = aiText;
+  const apAiTextEl = document.getElementById('ap-ai-text');
+  if (apAiTextEl) apAiTextEl.innerHTML = formatSafeRichText(aiText, { allowBold: true });
   document.getElementById('ap-subtitle').textContent =
     adapted ? 'ИИ адаптировал план под текущий доход' : 'Вот как ИИ предлагает распределить поступление';
 
@@ -5620,17 +5802,12 @@ async function openHabitTips(habitId) {
   {"title": "...", "body": "..."}
 ]`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: getAIHeaders(),
-        body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: prompt }]
-        })
+      const data = await callAI({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }]
       });
-      const data = await res.json();
-      const raw = data.content?.[0]?.text || '[]';
+      const raw = extractAIText(data) || '[]';
       aiTips = JSON.parse(raw.replace(/```json|```/g, '').trim());
       _tipsCache[cacheKey] = aiTips;
     } catch(e) {
