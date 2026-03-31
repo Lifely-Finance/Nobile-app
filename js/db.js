@@ -25,6 +25,7 @@ const DEFAULT_DB = {
     selectedRate: 10,
     aiPersonality: 'coach',
     aiProxyUrl: '/api/ai/messages',
+    aiProxyToken: '',
     riskAutoRule: { mode: 'warn_count', minSeverity: 'warn', minCount: 3 }
   }
 };
@@ -105,7 +106,9 @@ const DB_KEY   = 'nobile_enc';   // encrypted data
 const SALT_KEY = 'nobile_salt';  // random salt (not secret)
 const HASH_KEY = 'nobile_phash'; // PIN verifier hash
 const AI_PROXY_URL_KEY = 'nobile_ai_proxy_url';
+const AI_PROXY_TOKEN_KEY = 'nobile_ai_proxy_token';
 const DEFAULT_AI_PROXY_URL = '';
+const DEFAULT_AI_PROXY_TOKEN = '';
 
 let _cryptoKey = null; // CryptoKey in memory for session
 
@@ -230,17 +233,39 @@ function saveAIProxyUrl(val) {
   saveDB();
 }
 
+function getAIProxyToken() {
+  const fromSettings = DB?.settings?.aiProxyToken;
+  const fromStorage = localStorage.getItem(AI_PROXY_TOKEN_KEY);
+  return (fromSettings || fromStorage || DEFAULT_AI_PROXY_TOKEN || '').trim();
+}
+
+function saveAIProxyToken(val) {
+  const next = (val || '').trim();
+  if (!DB.settings) DB.settings = {};
+  DB.settings.aiProxyToken = next;
+  localStorage.setItem(AI_PROXY_TOKEN_KEY, next);
+  saveDB();
+}
+
 function loadAIProxyField() {
   const el = document.getElementById('set-ai-proxy-url');
   if (el) el.value = getAIProxyUrl();
 }
 
+function loadAIProxyTokenField() {
+  const el = document.getElementById('set-ai-proxy-token');
+  if (el) el.value = getAIProxyToken();
+}
+
 async function callAI(payload) {
   const endpoint = getAIProxyUrl();
+  const token = getAIProxyToken();
   if (!endpoint) throw new Error('AI proxy не настроен');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['X-Proxy-Token'] = token;
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload)
   });
   let data = null;

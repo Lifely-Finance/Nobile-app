@@ -59,16 +59,17 @@ function saveTx() {
   if (!amount || amount <= 0) { showToast('Введите сумму'); return; }
   if (!desc) { showToast('Введите описание'); return; }
 
-  const wasEdit = !!_editTxId; // capture BEFORE any reset
+  const wasEdit = !!_editTxId;
+  const txTypeAtSave = _txType;
 
   if (_editTxId) {
     const idx = DB.transactions.findIndex(t => t.id === _editTxId);
-    if (idx >= 0) DB.transactions[idx] = { ...DB.transactions[idx], type: _txType, amount, desc, category: cat, date };
+    if (idx >= 0) DB.transactions[idx] = { ...DB.transactions[idx], type: txTypeAtSave, amount, desc, category: cat, date };
     _editTxId = null;
     showToast('✅ Операция обновлена');
   } else {
-    DB.transactions.push({ id: Date.now(), type: _txType, amount, desc, category: cat, date });
-    showToast(_txType === 'income' ? '✅ Доход добавлен' : '✅ Расход добавлен');
+    DB.transactions.push({ id: Date.now(), type: txTypeAtSave, amount, desc, category: cat, date });
+    showToast(txTypeAtSave === 'income' ? '✅ Доход добавлен' : '✅ Расход добавлен');
   }
 
   saveDB();
@@ -77,10 +78,9 @@ function saveTx() {
   renderAll();
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
-  // Trigger Smart Income Entry for NEW income entries (not edits)
-  if (_txType === 'income' && !wasEdit) {
-    setTimeout(() => showSmartIncomeOverlay(amount), 300);
-    return; // Wait for user confirmation before closing
+
+  if (txTypeAtSave === 'income' && !wasEdit && typeof triggerAutopilot === 'function') {
+    setTimeout(() => triggerAutopilot(amount), 250);
   }
 }
 
@@ -140,10 +140,7 @@ function editTx(id) {
   if (!t) return;
   _editTxId = id;
   // Pre-fill tx sheet
-  const typeEl = document.getElementById('tx-type-income');
-  const typeExpEl = document.getElementById('tx-type-expense');
-  if (t.type === 'income') { typeEl && typeEl.click(); }
-  else { typeExpEl && typeExpEl.click(); }
+  setTxType(t.type === 'income' ? 'income' : 'expense');
   const amountEl = document.getElementById('tx-amount');
   const descEl   = document.getElementById('tx-desc');
   const dateEl   = document.getElementById('tx-date');
@@ -4852,8 +4849,7 @@ function confirmAutopilot() {
 
   // Add goal contribution entry
   const goalAmt = Math.round(amount * splits.goalContrib / 100);
-  if (goalAmt > 0 && DB.goals.length > 0) {
-    // Add to first active goal
+  if (goalAmt > 0) {
     const g = DB.goals.find(g => g.saved < g.target);
     if (g) {
       g.saved = (g.saved || 0) + goalAmt;

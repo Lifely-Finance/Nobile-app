@@ -2010,7 +2010,7 @@ function renderBenefitTaskCard(task, idx) {
       </div>
 
       <div class="benefit-task-story">
-        ${task.story(task.data)}
+        ${typeof task.story === 'function' ? task.story(task.data) : (task.story || '')}
       </div>
 
       <div style="font-weight:700;margin-bottom:16px;color:#fff">${task.question}</div>
@@ -3388,6 +3388,7 @@ function openSettings() {
   if (!DB.settings) DB.settings = {};
   // Load AI proxy URL into field
   loadAIProxyField();
+  loadAIProxyTokenField?.();
   updateAIProxyStatus();
   // Security
   setSegActive('lock-timeout-seg', DB.settings.lockTimeout ?? 0);
@@ -5274,12 +5275,16 @@ function dismissAlert(i) {
       setTimeout(hideSplash, wait);
     }
 
-    // Hide when DOM ready + min time passed
-    if (document.readyState === 'complete') {
+    // Hide as soon as DOM is ready; do not depend on slow external resources.
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
       tryHide();
     } else {
-      window.addEventListener('load', tryHide);
+      document.addEventListener('DOMContentLoaded', tryHide, { once: true });
+      window.addEventListener('load', tryHide, { once: true });
     }
+
+    // Safety fallback in case external assets delay lifecycle events.
+    setTimeout(tryHide, minTime + 300);
   }
 
   // ── Loading spinner overlay (for slow page transitions > 0.3s) ──
