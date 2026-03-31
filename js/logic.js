@@ -4404,41 +4404,52 @@ async function togglePushNotif(enabled) {
 // Send notification via Service Worker (works in PWA on Android) or fallback to Notification API
 async function sendPush(title, body, tag = 'nobile', category = 'default', extra = {}) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const deeplinkMap = {
+    payment: 'capital/payments',
+    budget: 'growth',
+    habit: 'system',
+    weekly: 'today',
+    welcome: 'today',
+    default: 'today'
+  };
+  const deeplink = extra.deeplink || deeplinkMap[category] || deeplinkMap.default;
+  const payload = {
+    title,
+    body,
+    tag,
+    deeplink,
+    actions: extra.actions || []
+  };
   try {
-    // Prefer Service Worker showNotification (required for Android PWA)
     const reg = window._swReg || (navigator.serviceWorker ? await navigator.serviceWorker.ready : null);
     if (reg && reg.active) {
-      reg.active.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        title, body, tag, category,
-        amount: extra.amount,
-        date:   extra.date
-      });
+      reg.active.postMessage({ type: 'SEND_PUSH', payload });
       return;
     }
-    // Also try showNotification directly on registration
     if (reg && reg.showNotification) {
       await reg.showNotification(title, {
-        body, tag,
-        icon: './icons/nobile-logo-192.png',
-        badge: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='18' fill='white'/><text x='50%' y='72' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='64' fill='black'>N</text></svg>`,
+        body,
+        tag,
+        icon: './icons/nobile-notification-large.png',
+        badge: './icons/nobile-notification.png',
         vibrate: [150, 80, 150],
         requireInteraction: false,
         silent: false,
-        data: { category, url: './' }
+        data: { category, deeplink }
       });
       return;
     }
-  } catch(e) {}
-  // Fallback for desktop browsers without SW
+  } catch (e) {}
   try {
     const n = new Notification(title, {
-      body, tag, icon: './icons/nobile-logo-192.png',
+      body,
+      tag,
+      icon: './icons/nobile-notification-large.png',
       requireInteraction: false
     });
     n.onclick = () => { window.focus(); n.close(); };
     setTimeout(() => n.close(), 8000);
-  } catch(e) {}
+  } catch (e) {}
 }
 
 // Periodic keepalive: send current data to SW so it can check payments in background

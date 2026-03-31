@@ -13,24 +13,55 @@
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.addEventListener('message', event => {
       const data = event.data || {};
-      if (data.type !== 'NOTIF_CLICK' || data.action === 'dismiss') return;
-      const pageByCategory = {
-        payment: 'capital',
-        budget: 'growth',
-        habit: 'system',
-        weekly: 'today',
-        welcome: 'today',
-        default: 'today'
-      };
-      const page = pageByCategory[data.category] || 'today';
-      if (typeof navTo === 'function') navTo(page);
-      if (data.category === 'payment') {
+
+      // SW отправляет { type: 'NAVIGATE', deeplink: '...' } при клике на уведомление
+      if (data.type === 'NAVIGATE' && data.deeplink) {
+        handleDeeplink(data.deeplink);
+        return;
+      }
+
+      // Оставлено для обратной совместимости на случай других источников
+      if (data.type === 'NOTIF_CLICK' && data.action !== 'dismiss') {
+        const pageByCategory = {
+          payment: 'capital',
+          budget: 'growth',
+          habit: 'system',
+          weekly: 'today',
+          welcome: 'today',
+          default: 'today'
+        };
+        const page = pageByCategory[data.category] || 'today';
+        if (typeof navTo === 'function') navTo(page);
+        if (data.category === 'payment') {
+          setTimeout(() => {
+            const btn = document.querySelector('[data-cap="payments"]');
+            if (btn) btn.click();
+          }, 150);
+        }
+      }
+    });
+  }
+
+  /**
+   * Разбирает deeplink и выполняет навигацию.
+   * Формат deeplink: "page" или "page/sub" или "page?param=value"
+   */
+  function handleDeeplink(deeplink) {
+    if (!deeplink || typeof navTo !== 'function') return;
+    try {
+      const [pathPart] = deeplink.split('?');
+      const [page, sub] = pathPart.split('/');
+      navTo(page || 'today');
+      if (sub) {
+        // Небольшая задержка, чтобы страница успела отрисоваться
         setTimeout(() => {
-          const btn = document.querySelector('[data-cap="payments"]');
+          const btn = document.querySelector(`[data-cap="${sub}"]`);
           if (btn) btn.click();
         }, 150);
       }
-    });
+    } catch (e) {
+      console.warn('handleDeeplink error:', e);
+    }
   }
 
   async function ensureServiceWorkerRegistered() {
@@ -49,11 +80,26 @@
     }
   }
 
+  /**
+   * При возврате на вкладку переотправляем расписание в SW.
+   * Это компенсирует потерю setTimeout-таймеров при выгрузке SW браузером.
+   */
+  function wireVisibilityReschedule() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          if (typeof scheduleNotifications === 'function') scheduleNotifications();
+        } catch (e) {}
+      }
+    });
+  }
+
   function initApp() {
     const txDateEl = document.getElementById('tx-date');
     if (txDateEl) txDateEl.value = todayISO();
     ensureServiceWorkerRegistered();
     wireServiceWorkerMessages();
+    wireVisibilityReschedule();
 
     try {
       bootApp();

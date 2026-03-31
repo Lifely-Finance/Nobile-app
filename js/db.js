@@ -105,7 +105,7 @@ const DB_KEY   = 'nobile_enc';   // encrypted data
 const SALT_KEY = 'nobile_salt';  // random salt (not secret)
 const HASH_KEY = 'nobile_phash'; // PIN verifier hash
 const AI_PROXY_URL_KEY = 'nobile_ai_proxy_url';
-const DEFAULT_AI_PROXY_URL = '/api/ai/messages';
+const DEFAULT_AI_PROXY_URL = '';
 
 let _cryptoKey = null; // CryptoKey in memory for session
 
@@ -219,11 +219,11 @@ function getAIProxyUrl() {
   const fromSettings = DB?.settings?.aiProxyUrl;
   const fromStorage = localStorage.getItem(AI_PROXY_URL_KEY);
   const url = (fromSettings || fromStorage || DEFAULT_AI_PROXY_URL || '').trim();
-  return url || DEFAULT_AI_PROXY_URL;
+  return url || '';
 }
 
 function saveAIProxyUrl(val) {
-  const next = (val || '').trim() || DEFAULT_AI_PROXY_URL;
+  const next = (val || '').trim();
   if (!DB.settings) DB.settings = {};
   DB.settings.aiProxyUrl = next;
   localStorage.setItem(AI_PROXY_URL_KEY, next);
@@ -237,6 +237,7 @@ function loadAIProxyField() {
 
 async function callAI(payload) {
   const endpoint = getAIProxyUrl();
+  if (!endpoint) throw new Error('AI proxy не настроен');
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
