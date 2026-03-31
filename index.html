@@ -1719,6 +1719,20 @@
       </div>
     </div>
   </div>
+  <div class="sett-row" style="align-items:flex-start;gap:10px">
+    <div class="sett-ico" style="background:rgba(245,200,66,.12);color:var(--gold);margin-top:2px">🔐</div>
+    <div style="flex:1;min-width:0">
+      <div class="sett-label" style="margin-bottom:8px">Proxy Token <span style="font-size:.65rem;color:var(--muted);font-weight:600">(опционально)</span></div>
+      <div style="position:relative">
+        <input id="set-ai-proxy-token" type="password" placeholder="X-Proxy-Token"
+          oninput="saveAIProxyToken(this.value)"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
+      </div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
+        Нужен только если ваш backend proxy требует заголовок <b>X-Proxy-Token</b>. Для локальной разработки можно оставить пустым.
+      </div>
+    </div>
+  </div>
   <div class="sett-divider" style="margin:12px 0"></div>
   <button onclick="analyzeMonthWithAI()" class="sett-ai-analyze-btn">
     <span>📊</span> Проанализировать мой месяц
@@ -2312,7 +2326,8 @@
 </div>
 </div>
 </div>
-<script crossorigin="anonymous" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' defer="" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516">
+
+<script>
 
 // ═══════════════════════════════════════
 // V3 NEW FEATURES - Smart Actions & AI
@@ -2598,20 +2613,14 @@ function calculateBudgetStatus() {
 
 // ── Open Transaction Form with Pre-filled Values ──
 function openTransactionForm(params = {}) {
-  // Reset form
   document.getElementById('tx-amount').value = params.amount || '';
   document.getElementById('tx-desc').value = params.note || '';
   document.getElementById('tx-category').value = params.category || 'other';
-
-  // Set type to expense for savings
-  if (params.category === 'savings') {
-    document.getElementById('tx-type-expense')?.click();
-  } else {
-    document.getElementById('tx-type-income')?.click();
+  const txType = params.category === 'savings' ? 'expense' : 'income';
+  if (typeof setTxType === 'function') {
+    setTxType(txType);
   }
-
-  // Open the sheet
-  openSheet('tx');
+  openSheet('tx', txType);
 }
 
 
@@ -2835,6 +2844,20 @@ document.addEventListener('DOMContentLoaded', initV3Features);
   </div>
 </div>
 
+
+<!-- ══ AI ANALYSIS OVERLAY ══ -->
+<div class="ai-analysis-overlay" id="ai-analysis-overlay" onclick="closeAIAnalysis()">
+  <div class="ai-analysis-sheet" onclick="event.stopPropagation()">
+    <div class="ai-analysis-head">
+      <div>
+        <div class="ai-analysis-title">📊 Анализ месяца</div>
+        <div class="ai-analysis-sub">Персональная сводка от Nobile AI</div>
+      </div>
+      <button class="ai-analysis-close" onclick="closeAIAnalysis()">✕</button>
+    </div>
+    <div class="ai-analysis-content" id="ai-analysis-content"></div>
+  </div>
+</div>
 
 <!-- ══ SMART INCOME ENTRY OVERLAY ══ -->
 <div class="smart-income-overlay" id="smart-income-overlay">
