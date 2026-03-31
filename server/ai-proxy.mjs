@@ -37,8 +37,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 if (!PROXY_TOKEN) {
-  console.error('[ai-proxy] ОШИБКА: PROXY_AUTH_TOKEN не задан. Задайте случайный секрет и передавайте его из фронтенда в заголовке X-Proxy-Token');
-  process.exit(1);
+  console.warn('[ai-proxy] PROXY_AUTH_TOKEN не задан — прокси запущен без дополнительного токена. Используйте это только для локальной разработки.');
 }
 
 /* ── Rate limiter (скользящее окно 1 минута) ── */
@@ -131,7 +130,7 @@ const server = http.createServer((req, res) => {
   }
 
   const clientToken = req.headers['x-proxy-token'] || '';
-  if (clientToken !== PROXY_TOKEN) {
+  if (PROXY_TOKEN && clientToken !== PROXY_TOKEN) {
     console.warn(`[ai-proxy] Неверный токен с IP: ${ip}`);
     return sendJson(res, 401, { error: 'Unauthorized' }, corsHeaders(origin));
   }
