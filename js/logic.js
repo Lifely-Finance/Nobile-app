@@ -80,7 +80,8 @@ function saveTx() {
   document.getElementById('tx-desc').value = '';
 
   if (txTypeAtSave === 'income' && !wasEdit && typeof triggerAutopilot === 'function') {
-    setTimeout(() => triggerAutopilot(amount), 250);
+    const newTxId = DB.transactions[DB.transactions.length - 1]?.id;
+    setTimeout(() => triggerAutopilot(amount, newTxId), 250);
   }
 }
 
@@ -4753,7 +4754,7 @@ function adaptSplits(amount, baseSplits) {
 // ── Current autopilot plan (for confirm) ──
 let _apPlan = null;
 
-function triggerAutopilot(amount) {
+function triggerAutopilot(amount, txId) {
   const ap = getAutopilotSettings();
   if (!ap.enabled) return;
 
@@ -4767,7 +4768,7 @@ function triggerAutopilot(amount) {
     splits.life = Math.max(0, splits.life + diff);
   }
 
-  _apPlan = { amount, splits, adapted, reason, avg, ratio };
+  _apPlan = { amount, splits, adapted, reason, avg, ratio, txId };
   showAutopilotModal(_apPlan);
 }
 
@@ -4857,6 +4858,12 @@ function confirmAutopilot() {
     } else {
       DB.savings.push({ id: Date.now()+1, amount: goalAmt, note: '🤖 Автопилот — взнос в цель', date: today });
     }
+  }
+
+  // Mark source income transaction as autopilot-processed so alerts don't re-prompt for savings
+  if (_apPlan && _apPlan.txId) {
+    const srcTx = DB.transactions.find(t => t.id === _apPlan.txId);
+    if (srcTx) srcTx.apDone = true;
   }
 
   saveDB();

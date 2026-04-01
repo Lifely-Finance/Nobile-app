@@ -5129,13 +5129,19 @@ function checkAlerts() {
       });
     }
 
-    // Напоминание о накоплениях
+    // Напоминание о накоплениях — не показывать если автопилот уже обработал доход этого месяца
+    const monthIncomeTxs = DB.transactions.filter(t => {
+      if (t.type !== 'income') return false;
+      const d = new Date(t.date);
+      return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
+    });
+    const allIncomeAutopiloted = monthIncomeTxs.length > 0 && monthIncomeTxs.every(t => t.apDone);
     const monthlySavingsTotal = DB.savings.filter(s => {
       const d = new Date(s.date);
       return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
     }).reduce((s,e)=>s+e.amount, 0);
     const savingsTarget = Math.round(budget.savings.limit);
-    if (canSave && savingsTarget > 0 && monthlySavingsTotal < savingsTarget * 0.5 && stats.income > 0) {
+    if (!allIncomeAutopiloted && canSave && savingsTarget > 0 && monthlySavingsTotal < savingsTarget * 0.5 && stats.income > 0) {
       if (isNewbie) {
         alerts.push({
           type: 'gold', ico: '🏦',
