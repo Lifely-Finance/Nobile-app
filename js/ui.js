@@ -1033,7 +1033,7 @@ function renderGrowth() {
   if (!level) {
     profileEl.innerHTML = '<div class="empty"><div class="empty-s">Пройдите онбординг</div></div>';
   } else {
-    const doneHabitsToday = DB.habits.filter(h => h.completions?.[new Date().toISOString().split('T')[0]]).length;
+    const doneHabitsToday = DB.habits.filter(h => h.completions?.[todayISO()]).length;
     const topStreak = DB.habits.reduce((max,h) => Math.max(max, getHabitStreak(h)), 0);
     const txCount = DB.transactions.length;
     profileEl.innerHTML = `
@@ -5220,22 +5220,66 @@ function dismissAlert(i) {
   // Store all lottie instances
   const _lottieInstances = {};
 
+  function ensureLogoFallback(container) {
+    if (!container) return null;
+    let fallback = container.querySelector('.nobile-logo-fallback');
+    if (!fallback) {
+      fallback = document.createElement('img');
+      fallback.className = 'nobile-logo-fallback';
+      fallback.src = './icons/nobile-logo-512.png';
+      fallback.alt = 'Nobile';
+      fallback.loading = 'eager';
+      container.appendChild(fallback);
+    }
+    return fallback;
+  }
+
+  function showLogoFallback(container) {
+    if (!container) return;
+    ensureLogoFallback(container);
+    container.classList.remove('has-live-lottie');
+  }
+
+  function hideLogoFallback(container) {
+    if (!container) return;
+    container.classList.add('has-live-lottie');
+  }
+
   function createLottie(containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return null;
+
+    showLogoFallback(container);
+
     if (_lottieInstances[containerId]) {
-      _lottieInstances[containerId].destroy();
+      try { _lottieInstances[containerId].destroy(); } catch (e) {}
+      delete _lottieInstances[containerId];
     }
-    const inst = lottie.loadAnimation({
-      container,
-      renderer: 'canvas',
-      loop: options.loop !== undefined ? options.loop : true,
-      autoplay: options.autoplay !== undefined ? options.autoplay : true,
-      animationData: _lottieData,
-      rendererSettings: { preserveAspectRatio: options.preserveAspectRatio || 'xMidYMid meet', clearCanvas: true }
-    });
-    _lottieInstances[containerId] = inst;
-    return inst;
+
+    if (!_lottieData || typeof window.lottie === 'undefined' || !window.lottie?.loadAnimation) {
+      return null;
+    }
+
+    try {
+      const inst = window.lottie.loadAnimation({
+        container,
+        renderer: options.renderer || 'svg',
+        loop: options.loop !== undefined ? options.loop : true,
+        autoplay: options.autoplay !== undefined ? options.autoplay : true,
+        animationData: _lottieData,
+        rendererSettings: {
+          preserveAspectRatio: options.preserveAspectRatio || 'xMidYMid meet',
+          clearCanvas: true
+        }
+      });
+      _lottieInstances[containerId] = inst;
+      hideLogoFallback(container);
+      return inst;
+    } catch (e) {
+      console.warn('Lottie init failed for', containerId, e);
+      showLogoFallback(container);
+      return null;
+    }
   }
 
   // ── Header logo — loop with 5s pause ──
