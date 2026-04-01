@@ -1701,35 +1701,19 @@
   </div>
   <div class="sett-divider" style="margin:12px 0"></div>
 
-  <!-- AI Proxy -->
   <div class="sett-row" style="align-items:flex-start;gap:10px">
-    <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF;margin-top:2px">🛡️</div>
+    <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF;margin-top:2px">✨</div>
     <div style="flex:1;min-width:0">
       <div class="sett-label" style="margin-bottom:8px">
-        AI Proxy URL
-        <span id="ai-key-status" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-left:6px;vertical-align:middle"></span>
+        Google Gemini
+        <span id="ai-key-status" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2DE8B0;margin-left:6px;vertical-align:middle"></span>
       </div>
-      <div style="position:relative">
-        <input id="set-ai-proxy-url" type="text" placeholder="/api/ai/messages"
-          oninput="saveAIProxyUrl(this.value);updateAIProxyStatus()"
-          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
+      <div style="background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:12px;border-radius:12px;font-size:.78rem;line-height:1.55">
+        ИИ теперь работает <b>сразу из коробки</b> через <b>Google Gemini</b>.
+        Пользователю больше не нужно вводить proxy URL, токен или API-ключ в настройках.
       </div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
-        Секретный AI-ключ больше не хранится в браузере. В поле хранится только адрес backend/edge proxy. Пример локального proxy-сервера лежит в папке <b>server/</b> и использует переменную окружения <b>ANTHROPIC_API_KEY</b>.
-      </div>
-    </div>
-  </div>
-  <div class="sett-row" style="align-items:flex-start;gap:10px">
-    <div class="sett-ico" style="background:rgba(245,200,66,.12);color:var(--gold);margin-top:2px">🔐</div>
-    <div style="flex:1;min-width:0">
-      <div class="sett-label" style="margin-bottom:8px">Proxy Token <span style="font-size:.65rem;color:var(--muted);font-weight:600">(опционально)</span></div>
-      <div style="position:relative">
-        <input id="set-ai-proxy-token" type="password" placeholder="X-Proxy-Token"
-          oninput="saveAIProxyToken(this.value)"
-          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
-      </div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
-        Нужен только если ваш backend proxy требует заголовок <b>X-Proxy-Token</b>. Для локальной разработки можно оставить пустым.
+      <div style="font-size:.62rem;color:var(--muted);margin-top:6px;line-height:1.5">
+        В настройках оставлена только роль ассистента. Если позже захотите перейти на более безопасную серверную схему, можно использовать пример в папке <b>server/</b>.
       </div>
     </div>
   </div>
