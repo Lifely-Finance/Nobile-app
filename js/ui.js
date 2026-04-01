@@ -5275,7 +5275,8 @@ function dismissAlert(i) {
         }
       });
       _lottieInstances[containerId] = inst;
-      hideLogoFallback(container);
+      // Do NOT hide fallback — Lottie SVG/canvas sits on top (z-index:2) when working.
+      // If Lottie renders blank/transparent, fallback image remains visible underneath.
       return inst;
     } catch (e) {
       console.warn('Lottie init failed for', containerId, e);
