@@ -1478,7 +1478,7 @@ body {
 .auth-bg-glow { position:absolute; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(77,166,255,.12) 0%, transparent 70%); top:-60px; left:50%; transform:translateX(-50%); pointer-events:none; }
 .auth-logo-wrap { width:160px; height:160px; border-radius:0; background:transparent; border:none; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; position:relative; }
 .auth-logo-wrap > img { width:100%; height:100%; object-fit:contain; display:block; }
-.auth-logo-wrap.auth-logo-ready > img { display:none; } /* Overridden below */
+.auth-logo-wrap.auth-logo-ready > img { display:block; } /* Keep image visible; Lottie canvas overlays via z-index when working */
 .auth-logo-frame { isolation:isolate; }
 .auth-logo-lottie { width:100%; height:100%; display:flex; align-items:center; justify-content:center; transform-origin:center; pointer-events:none; will-change:transform; position:relative; z-index:2; }
 .auth-logo-frame--hero { border-radius:32px !important; }
@@ -5544,7 +5544,7 @@ html.is-xbox body { zoom: .8; }
 .auth-logo-wrap.auth-logo-ready > img {
   opacity: 1 !important;
   visibility: visible !important;
-  pointer-events: none;
+  display: block !important;
 }
 .auth-logo-lottie {
   position: absolute;
@@ -5685,15 +5685,16 @@ html.is-xbox body { zoom: .8; }
 
 
 /* ══ NOBILE v4.1.2 FIXES ══ */
-/* Статичный fallback логотип виден до инициализации анимации, после — скрывается. */
+/* Logo image always visible — Lottie canvas sits on top via z-index when it works */
 .auth-logo-wrap > img {
   opacity: 1 !important;
   visibility: visible !important;
   display: block !important;
 }
 .auth-logo-wrap.auth-logo-ready > img {
-  opacity: 0 !important;
-  visibility: hidden !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
 }
 /* Название Nobile - статичное, только градиент */
 .auth-brand--wave > span {
@@ -5819,11 +5820,30 @@ html.is-xbox body { zoom: .8; }
 }
 .splash-lottie .nobile-logo-fallback {
   padding: 16px;
+  animation: splashLogoBreathe 3s ease-in-out infinite;
 }
+/* Never hide the fallback — Lottie canvas sits on top via z-index when it works,
+   fallback stays visible as guaranteed baseline when Lottie is blank/unsupported */
 .has-live-lottie > .nobile-logo-fallback {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 1;
+  visibility: visible;
 }
+/* Gentle breathing animation for header/auth logo fallback */
+.nobile-logo-fallback {
+  animation: logoFallbackBreathe 4s ease-in-out infinite;
+}
+.splash-lottie .nobile-logo-fallback {
+  animation: splashLogoBreathe 3s ease-in-out infinite;
+}
+@keyframes logoFallbackBreathe {
+  0%,100% { opacity:.82; transform:scale(.97); }
+  50%      { opacity:1;   transform:scale(1);   }
+}
+@keyframes splashLogoBreathe {
+  0%,100% { opacity:.7;  transform:scale(.94); filter:drop-shadow(0 0 0px rgba(245,200,66,0)); }
+  50%     { opacity:1;   transform:scale(1);   filter:drop-shadow(0 0 18px rgba(245,200,66,.35)); }
+}
+
 
 /* Onboarding / capital panes */
 .onb-step {
