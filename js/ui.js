@@ -5226,7 +5226,9 @@ function dismissAlert(i) {
     if (!fallback) {
       fallback = document.createElement('img');
       fallback.className = 'nobile-logo-fallback';
-      fallback.src = './icons/nobile-logo-512.png';
+      // Use high-quality animated PNG for splash, standard 512 for small header logos
+      const isSplash = container.classList.contains('splash-lottie') || container.id === 'splash-lottie-container';
+      fallback.src = isSplash ? './icons/nobile-logo-animated.png' : './icons/nobile-logo-512.png';
       fallback.alt = 'Nobile';
       fallback.loading = 'eager';
       container.appendChild(fallback);
