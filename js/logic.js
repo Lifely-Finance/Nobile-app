@@ -3065,7 +3065,7 @@ ${ctx}
     const reply = extractAIText(data) || 'Не удалось получить ответ.';
     _aiMessages[_aiMessages.length-1] = { role:'assistant', content:reply };
   } catch(e) {
-    _aiMessages[_aiMessages.length-1] = { role:'assistant', content:'Ошибка соединения. Проверьте интернет.' };
+    _aiMessages[_aiMessages.length-1] = { role:'assistant', content:e?.message || 'Ошибка соединения. Проверьте интернет.' };
   }
   renderChatMessages();
   renderQuickPrompts();
@@ -3237,7 +3237,7 @@ ${JSON.stringify(analysisData, null, 2)}
       }]
     });
     const analysis = extractAIText(data);
-    if (!analysis) throw new Error('Пустой ответ от AI proxy');
+    if (!analysis) throw new Error('Пустой ответ от Gemini');
 
     if (contentEl) {
       contentEl.textContent = '';
@@ -3262,7 +3262,7 @@ ${JSON.stringify(analysisData, null, 2)}
       icon.style.marginBottom = '10px';
       icon.textContent = '⚠️';
       const title = document.createElement('div');
-      title.textContent = 'Не удалось получить анализ. Проверьте AI proxy.';
+      title.textContent = 'Не удалось получить анализ. Проверьте подключение к Gemini.';
       const message = document.createElement('div');
       message.style.fontSize = '.7rem';
       message.style.marginTop = '10px';

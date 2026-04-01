@@ -3386,7 +3386,7 @@ let _alertThreshold = 85;
 
 function openSettings() {
   if (!DB.settings) DB.settings = {};
-  // Load AI proxy URL into field
+  // AI работает из коробки — дополнительных полей нет
   loadAIProxyField();
   loadAIProxyTokenField?.();
   updateAIProxyStatus();
@@ -5428,10 +5428,9 @@ function dismissAlert(i) {
 ══════════════════════════════════════ */
 
 function updateAIProxyStatus() {
-  const endpoint = getAIProxyUrl();
   const dot = document.getElementById('ai-key-status');
   if (!dot) return;
-  dot.style.background = endpoint ? '#2DE8B0' : 'var(--dim)';
+  dot.style.background = '#2DE8B0';
 }
 
 // Совместимость с legacy inline-обработчиками
