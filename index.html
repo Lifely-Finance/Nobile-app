@@ -27,6 +27,7 @@
 <!-- ══ SPLASH SCREEN ══ -->
 <div id="splash-screen">
 <div class="splash-lottie" id="splash-lottie-container"></div>
+<img class="splash-logo-fallback" src="./icons/nobile-logo-512.png" alt="Nobile logo"/>
 <div class="splash-brand">
 <div class="splash-app-name"><em>N</em>OBILE</div>
 <div class="splash-tagline">Финансы &amp; Рост</div>
@@ -40,7 +41,9 @@
 <div class="hdr">
 <!-- Logo -->
 <div class="logo" onclick="document.querySelector('.nb[data-page=today]').click()">
-<div class="logo-lottie-wrap" id="header-lottie-container"></div>
+<div class="logo-lottie-wrap" id="header-lottie-container">
+<img src="./icons/nobile-logo-512.png" alt="Nobile logo"/>
+</div>
 <div class="logo-wordmark">
 <div class="logo-name"><em>N</em>OBILE</div>
 <div class="logo-tagline">Финансы &amp; Рост</div>
@@ -49,6 +52,7 @@
 <!-- Right controls -->
 <div class="hdr-r">
 <div class="hdr-avatar-btn" id="btn-profile" style="position:relative">
+<div class="hdr-risk-badge" id="hdr-risk-badge" onclick="openRiskDialogFromBadge(event)" style="display:none" title="Оповещения">!</div>
 <div class="avatar" id="hdr-avatar-ico">НБ</div>
 <div>
 <div class="hdr-avatar-name" id="hdr-avatar-name">Профиль</div>
@@ -95,7 +99,7 @@
     <div style="font-size:.42rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:1px">стресс</div>
   </div>
 </div>
-<div class="hero-lbl">💼 Баланс месяца<div class="hdr-risk-badge hero-risk-badge" id="hdr-risk-badge" onclick="openRiskDialogFromBadge(event)" style="display:none" title="Оповещения">!</div></div>
+<div class="hero-lbl">💼 Баланс месяца</div>
 <div class="hero-amt"><span class="cur">₽</span><span id="today-balance">0</span></div>
 <div class="hero-change" id="today-delta">▲ +0 ₽ за месяц</div>
 <div class="hero-divider"></div>
@@ -1700,19 +1704,35 @@
   </div>
   <div class="sett-divider" style="margin:12px 0"></div>
 
+  <!-- AI Proxy -->
   <div class="sett-row" style="align-items:flex-start;gap:10px">
-    <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF;margin-top:2px">✨</div>
+    <div class="sett-ico" style="background:rgba(77,166,255,.12);color:#4DA6FF;margin-top:2px">🛡️</div>
     <div style="flex:1;min-width:0">
       <div class="sett-label" style="margin-bottom:8px">
-        Google Gemini
-        <span id="ai-key-status" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2DE8B0;margin-left:6px;vertical-align:middle"></span>
+        AI Proxy URL
+        <span id="ai-key-status" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-left:6px;vertical-align:middle"></span>
       </div>
-      <div style="background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:12px;border-radius:12px;font-size:.78rem;line-height:1.55">
-        ИИ теперь работает <b>сразу из коробки</b> через <b>Google Gemini</b>.
-        Пользователю больше не нужно вводить proxy URL, токен или API-ключ в настройках.
+      <div style="position:relative">
+        <input id="set-ai-proxy-url" type="text" placeholder="/api/ai/messages"
+          oninput="saveAIProxyUrl(this.value);updateAIProxyStatus()"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
       </div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:6px;line-height:1.5">
-        В настройках оставлена только роль ассистента. Если позже захотите перейти на более безопасную серверную схему, можно использовать пример в папке <b>server/</b>.
+      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
+        Секретный AI-ключ больше не хранится в браузере. В поле хранится только адрес backend/edge proxy. Пример локального proxy-сервера лежит в папке <b>server/</b> и использует переменную окружения <b>ANTHROPIC_API_KEY</b>.
+      </div>
+    </div>
+  </div>
+  <div class="sett-row" style="align-items:flex-start;gap:10px">
+    <div class="sett-ico" style="background:rgba(245,200,66,.12);color:var(--gold);margin-top:2px">🔐</div>
+    <div style="flex:1;min-width:0">
+      <div class="sett-label" style="margin-bottom:8px">Proxy Token <span style="font-size:.65rem;color:var(--muted);font-weight:600">(опционально)</span></div>
+      <div style="position:relative">
+        <input id="set-ai-proxy-token" type="password" placeholder="X-Proxy-Token"
+          oninput="saveAIProxyToken(this.value)"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:12px;font-size:.82rem;box-sizing:border-box"/>
+      </div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:5px;line-height:1.5">
+        Нужен только если ваш backend proxy требует заголовок <b>X-Proxy-Token</b>. Для локальной разработки можно оставить пустым.
       </div>
     </div>
   </div>
@@ -2003,11 +2023,11 @@
 </div>
 </div>
 <!-- ══ ACHIEVEMENT POPUP ══ -->
-<div id="achievement-popup" style="display:none;position:fixed;inset:0;z-index:9990;pointer-events:none">
+<div id="achievement-popup" style="display:none;position:fixed;inset:0;z-index:9990;pointer-events:none;align-items:center;justify-content:center;padding:16px">
 <!-- backdrop -->
 <div id="ach-popup-bg" style="position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);opacity:0;transition:opacity .35s"></div>
 <!-- card -->
-<div id="ach-popup-card" style="position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(100%);width:min(100%,420px);transition:transform .45s cubic-bezier(.22,.68,0,1.15);pointer-events:all">
+<div id="ach-popup-card" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.88);opacity:0;width:min(calc(100% - 24px),420px);transition:transform .32s cubic-bezier(.22,.68,0,1.15),opacity .24s ease;pointer-events:all">
 <div style="margin:0 12px 32px;background:linear-gradient(160deg,#1a1e2e,#12151f);border:1px solid rgba(245,200,66,.35);border-radius:28px;padding:32px 24px 24px;position:relative;overflow:hidden">
 <!-- glow rays centered -->
 <div id="ach-popup-glow" style="position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .5s .2s">

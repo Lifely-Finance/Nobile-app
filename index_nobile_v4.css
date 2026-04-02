@@ -257,9 +257,7 @@ body {
 }
 .hero::before { content:''; position:absolute; top:-80px; right:-80px; width:240px; height:240px; background:radial-gradient(circle,rgba(245,200,66,.12),transparent 65%); pointer-events:none; }
 .hero::after  { content:''; position:absolute; bottom:-50px; left:-40px; width:180px; height:180px; background:radial-gradient(circle,rgba(45,232,176,.09),transparent 65%); pointer-events:none; }
-.hero-lbl { font-size:.6rem; font-weight:700; color:rgba(245,200,66,.6); text-transform:uppercase; letter-spacing:.12em; margin-bottom:6px; display:inline-flex; align-items:center; gap:7px; }
-.hero-risk-badge { position:static !important; top:auto !important; right:auto !important; width:20px !important; height:20px !important; flex-shrink:0; animation: heroBadgePulse 2s ease-in-out infinite; }
-@keyframes heroBadgePulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,107,107,.45), 0 4px 12px rgba(255,107,107,.3); } 50% { box-shadow:0 0 0 5px rgba(255,107,107,0), 0 4px 12px rgba(255,107,107,.15); } }
+.hero-lbl { font-size:.6rem; font-weight:700; color:rgba(245,200,66,.6); text-transform:uppercase; letter-spacing:.12em; margin-bottom:6px; }
 .hero-amt {
   font-variant-numeric: tabular-nums; font-family:var(--font-head); font-size:2.6rem; font-weight:900; letter-spacing:-.04em; line-height:1; position:relative; z-index:1; }
 .hero-amt .cur { font-size:1.2rem; color:var(--gold); margin-right:4px; vertical-align:top; margin-top:6px; display:inline-block; }
@@ -1478,7 +1476,7 @@ body {
 .auth-bg-glow { position:absolute; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(77,166,255,.12) 0%, transparent 70%); top:-60px; left:50%; transform:translateX(-50%); pointer-events:none; }
 .auth-logo-wrap { width:160px; height:160px; border-radius:0; background:transparent; border:none; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; position:relative; }
 .auth-logo-wrap > img { width:100%; height:100%; object-fit:contain; display:block; }
-.auth-logo-wrap.auth-logo-ready > img { display:block; } /* Keep image visible; Lottie canvas overlays via z-index when working */
+.auth-logo-wrap.auth-logo-ready > img { display:none; } /* Overridden below */
 .auth-logo-frame { isolation:isolate; }
 .auth-logo-lottie { width:100%; height:100%; display:flex; align-items:center; justify-content:center; transform-origin:center; pointer-events:none; will-change:transform; position:relative; z-index:2; }
 .auth-logo-frame--hero { border-radius:32px !important; }
@@ -2497,12 +2495,35 @@ body {
 .splash-lottie {
   width: 280px; height: 280px;
 }
+.splash-logo-fallback {
+  position: absolute;
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 10px 28px rgba(0,0,0,.45));
+  pointer-events: none;
+}
 /* Lottie in header — compact with pause */
 .logo-lottie-wrap {
   width: 38px; height: 38px; flex-shrink: 0;
   border-radius: 11px; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   background: #000;
+  position: relative;
+}
+.logo-lottie-wrap > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.logo-lottie-wrap canvas,
+.logo-lottie-wrap svg {
+  position: relative;
+  z-index: 1;
 }
 /* Lottie AI avatar */
 .ai-lottie-wrap {
@@ -5544,7 +5565,7 @@ html.is-xbox body { zoom: .8; }
 .auth-logo-wrap.auth-logo-ready > img {
   opacity: 1 !important;
   visibility: visible !important;
-  display: block !important;
+  pointer-events: none;
 }
 .auth-logo-lottie {
   position: absolute;
@@ -5685,7 +5706,7 @@ html.is-xbox body { zoom: .8; }
 
 
 /* ══ NOBILE v4.1.2 FIXES ══ */
-/* Logo image always visible — Lottie canvas sits on top via z-index when it works */
+/* Статичный fallback логотип виден до инициализации анимации, после — скрывается. */
 .auth-logo-wrap > img {
   opacity: 1 !important;
   visibility: visible !important;
@@ -5694,7 +5715,6 @@ html.is-xbox body { zoom: .8; }
 .auth-logo-wrap.auth-logo-ready > img {
   opacity: 1 !important;
   visibility: visible !important;
-  display: block !important;
 }
 /* Название Nobile - статичное, только градиент */
 .auth-brand--wave > span {
@@ -5746,593 +5766,3 @@ html.is-xbox body { zoom: .8; }
   .ai-analysis-overlay { align-items: center; padding: 24px; }
   .ai-analysis-sheet { border-radius: 26px; max-height: 80vh; }
 }
-
-/* ═══════════════════════════════════════
-   v4.3.2 HOTFIX — settings, modal, logo fallbacks
-═══════════════════════════════════════ */
-
-/* Splash branding */
-.splash-brand {
-  margin-top: 18px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.splash-app-name {
-  font-family: var(--font-head);
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: .12em;
-  color: #eef2ff;
-  text-transform: uppercase;
-}
-.splash-app-name em {
-  font-style: normal;
-  color: var(--gold);
-}
-.splash-tagline {
-  font-size: .78rem;
-  color: rgba(232,234,242,.62);
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-
-/* Robust logo fallback when Lottie/canvas fails */
-.logo-lottie-wrap,
-.ai-lottie-wrap,
-.ap-ai-lottie-wrap,
-.splash-lottie {
-  position: relative;
-}
-.logo-lottie-wrap,
-.ai-lottie-wrap,
-.ap-ai-lottie-wrap {
-  background: linear-gradient(135deg, rgba(45,232,176,.18), rgba(77,166,255,.14));
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.18);
-}
-.logo-lottie-wrap svg,
-.logo-lottie-wrap canvas,
-.ai-lottie-wrap svg,
-.ai-lottie-wrap canvas,
-.ap-ai-lottie-wrap svg,
-.ap-ai-lottie-wrap canvas,
-.splash-lottie svg,
-.splash-lottie canvas {
-  position: relative;
-  z-index: 2;
-  width: 100% !important;
-  height: 100% !important;
-}
-.nobile-logo-fallback {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 3px;
-  display: block;
-  z-index: 1;
-  transition: opacity .24s ease, visibility .24s ease;
-}
-.splash-lottie .nobile-logo-fallback {
-  padding: 16px;
-  animation: splashLogoBreathe 3s ease-in-out infinite;
-}
-/* Never hide the fallback — Lottie canvas sits on top via z-index when it works,
-   fallback stays visible as guaranteed baseline when Lottie is blank/unsupported */
-.has-live-lottie > .nobile-logo-fallback {
-  opacity: 1;
-  visibility: visible;
-}
-/* Gentle breathing animation for header/auth logo fallback */
-.nobile-logo-fallback {
-  animation: logoFallbackBreathe 4s ease-in-out infinite;
-}
-.splash-lottie .nobile-logo-fallback {
-  animation: splashLogoBreathe 3s ease-in-out infinite;
-}
-@keyframes logoFallbackBreathe {
-  0%,100% { opacity:.82; transform:scale(.97); }
-  50%      { opacity:1;   transform:scale(1);   }
-}
-@keyframes splashLogoBreathe {
-  0%,100% { opacity:.7;  transform:scale(.94); filter:drop-shadow(0 0 0px rgba(245,200,66,0)); }
-  50%     { opacity:1;   transform:scale(1);   filter:drop-shadow(0 0 18px rgba(245,200,66,.35)); }
-}
-
-
-/* Onboarding / capital panes */
-.onb-step {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.onb-rec-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.cap-pane {
-  width: 100%;
-  animation: fadeUp .22s ease both;
-}
-.pin-keypad-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 72px);
-  justify-content: center;
-  gap: 12px;
-}
-
-/* Settings screen */
-.sett-sheet {
-  background: linear-gradient(180deg, rgba(13,15,20,.98), rgba(16,19,28,.98));
-}
-.sett-header {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px 12px;
-  background: rgba(17,20,29,.94);
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255,255,255,.06);
-}
-.sett-back-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--s2);
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.sett-title {
-  font-family: var(--font-head);
-  font-size: 1.02rem;
-  font-weight: 800;
-}
-.sett-body {
-  padding: 14px 14px calc(28px + env(safe-area-inset-bottom));
-}
-.sett-module-label {
-  margin: 16px 2px 10px;
-  font-size: .68rem;
-  font-weight: 800;
-  color: rgba(255,255,255,.72);
-  letter-spacing: .04em;
-}
-.sett-card {
-  background: linear-gradient(145deg, rgba(21,24,32,.94), rgba(28,32,48,.82));
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.04);
-}
-.sett-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
-}
-.sett-row-stack {
-  flex-direction: column;
-  align-items: stretch;
-}
-.sett-row-left {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.sett-ico {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 1rem;
-  border: 1px solid rgba(255,255,255,.05);
-}
-.sett-info {
-  min-width: 0;
-  flex: 1;
-}
-.sett-label {
-  font-size: .82rem;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.25;
-}
-.sett-sub {
-  margin-top: 3px;
-  font-size: .69rem;
-  color: var(--muted);
-  line-height: 1.45;
-}
-.sett-divider {
-  height: 1px;
-  margin: 0 14px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.09), transparent);
-}
-.sett-seg {
-  width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 2px;
-}
-.sett-seg-btn {
-  min-width: 50px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-  color: var(--muted);
-  font-size: .76rem;
-  font-weight: 700;
-  text-align: center;
-  cursor: pointer;
-  transition: all .18s ease;
-}
-.sett-seg-btn.active {
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(77,166,255,.18), rgba(45,232,176,.14));
-  border-color: rgba(77,166,255,.28);
-  box-shadow: 0 0 0 1px rgba(77,166,255,.08) inset;
-}
-.sett-stepper-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.09);
-  background: var(--s2);
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.sett-stepper-val {
-  min-width: 54px;
-  text-align: center;
-  font-family: var(--font-head);
-  font-size: .96rem;
-  font-weight: 800;
-  color: var(--gold);
-}
-.sett-sliders {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.sett-slider-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.sett-slider-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: .78rem;
-  font-weight: 700;
-}
-.sett-slider-pct {
-  color: var(--gold);
-}
-.sett-range {
-  width: 100%;
-  accent-color: var(--blue);
-}
-.sett-ap-total {
-  position: relative;
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
-  min-height: 38px;
-}
-.sett-ap-total-track {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  background: linear-gradient(90deg, rgba(45,232,176,.25), rgba(77,166,255,.25));
-  transform-origin: left center;
-}
-.sett-ap-total-label {
-  position: relative;
-  z-index: 1;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: .74rem;
-  font-weight: 800;
-}
-.sett-ai-roles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 0 14px 2px;
-}
-.sett-ai-role {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 86px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-  cursor: pointer;
-  transition: all .18s ease;
-}
-.sett-ai-role.active {
-  background: linear-gradient(135deg, rgba(77,166,255,.15), rgba(45,232,176,.12));
-  border-color: rgba(77,166,255,.28);
-  box-shadow: 0 0 0 1px rgba(77,166,255,.06) inset;
-}
-.sett-ai-role-ico {
-  font-size: 1.28rem;
-}
-.sett-ai-role-name {
-  font-size: .72rem;
-  font-weight: 700;
-}
-.sett-ai-analyze-btn {
-  width: calc(100% - 28px);
-  margin: 0 14px 14px;
-  min-height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(77,166,255,.3);
-  background: linear-gradient(135deg, rgba(77,166,255,.18), rgba(45,232,176,.12));
-  color: var(--blue);
-  font-family: var(--font-head);
-  font-size: .8rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-}
-.sett-accordion-header { cursor: pointer; }
-.sett-notif-item {
-  padding: 6px 14px 0;
-}
-.sett-notif-chk {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: .77rem;
-  color: var(--text);
-  cursor: pointer;
-}
-.sett-notif-chk input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.sett-chk-box {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.04);
-  flex-shrink: 0;
-  position: relative;
-}
-.sett-notif-chk input:checked + .sett-chk-box::after {
-  content: '✓';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--mint);
-  font-size: .72rem;
-  font-weight: 900;
-}
-.sett-chevron {
-  color: var(--muted);
-  font-size: 1rem;
-  line-height: 1;
-}
-.sett-bottom-actions {
-  padding: 14px 0 4px;
-}
-.sett-logout-btn {
-  width: 100%;
-  min-height: 46px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,107,107,.22);
-  background: rgba(255,107,107,.11);
-  color: var(--coral);
-  font-family: var(--font-head);
-  font-size: .84rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-/* Stress modal */
-.stress-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 420;
-  background: rgba(0,0,0,.68);
-  backdrop-filter: blur(10px);
-  display: none;
-  align-items: flex-end;
-}
-.stress-modal-sheet {
-  width: 100%;
-  background: linear-gradient(180deg, rgba(19,22,30,.98), rgba(14,16,22,.99));
-  border-top-left-radius: 28px;
-  border-top-right-radius: 28px;
-  border-top: 1px solid rgba(255,255,255,.08);
-  padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
-  box-shadow: 0 -20px 60px rgba(0,0,0,.45);
-  animation: slideUp .28s cubic-bezier(.22,1,.36,1) both;
-}
-.stress-modal-handle {
-  width: 42px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.18);
-  margin: 0 auto 14px;
-}
-.stress-modal-header,
-.stress-modal-score-row,
-.stress-modal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.stress-modal-title {
-  font-family: var(--font-head);
-  font-size: .96rem;
-  font-weight: 800;
-}
-.stress-modal-pill {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: .66rem;
-  font-weight: 800;
-  letter-spacing: .06em;
-  border: 1px solid rgba(255,255,255,.1);
-  background: rgba(255,255,255,.05);
-}
-.stress-modal-pill.low { color: var(--mint); border-color: rgba(45,232,176,.28); background: rgba(45,232,176,.11); }
-.stress-modal-pill.med { color: var(--gold); border-color: rgba(245,200,66,.28); background: rgba(245,200,66,.11); }
-.stress-modal-pill.high { color: var(--coral); border-color: rgba(255,107,107,.28); background: rgba(255,107,107,.11); }
-.stress-modal-score-row { margin-top: 14px; align-items: baseline; justify-content: flex-start; }
-.stress-modal-score-num {
-  font-family: var(--font-head);
-  font-size: 2.3rem;
-  font-weight: 900;
-  line-height: 1;
-}
-.stress-modal-score-sub {
-  font-size: .72rem;
-  color: var(--muted);
-}
-.stress-modal-bar-track {
-  margin-top: 12px;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255,255,255,.06);
-}
-.stress-modal-bar-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--mint), var(--gold), var(--coral));
-  transition: width .45s ease;
-}
-.stress-modal-hint {
-  margin-top: 12px;
-  font-size: .76rem;
-  line-height: 1.55;
-  color: var(--text);
-}
-.stress-modal-chips {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.stress-modal-chip {
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-  padding: 12px;
-}
-.stress-modal-chip .k {
-  font-size: .62rem;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-.stress-modal-chip .v {
-  font-size: .76rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-.stress-modal-recs {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.stress-modal-rec {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-  padding: 12px;
-  font-size: .76rem;
-  line-height: 1.5;
-}
-.stress-modal-rec-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 5px;
-  border-radius: 999px;
-  background: var(--gold);
-  flex-shrink: 0;
-}
-.stress-modal-actions {
-  margin-top: 16px;
-}
-.stress-modal-btn-ai,
-.stress-modal-btn-close {
-  flex: 1;
-  min-height: 46px;
-  border-radius: 14px;
-  font-family: var(--font-head);
-  font-size: .8rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.stress-modal-btn-ai {
-  border: 1px solid rgba(77,166,255,.32);
-  background: linear-gradient(135deg, rgba(77,166,255,.18), rgba(45,232,176,.12));
-  color: var(--blue);
-}
-.stress-modal-btn-close {
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.04);
-  color: var(--text);
-}
-
-@media (max-width: 380px) {
-  .sett-ai-roles,
-  .stress-modal-chips {
-    grid-template-columns: 1fr;
-  }
-  .sett-seg-btn {
-    flex: 1 1 calc(50% - 8px);
-  }
-}
-
-.mb4{margin-bottom:4px}.mb10{margin-bottom:10px}
