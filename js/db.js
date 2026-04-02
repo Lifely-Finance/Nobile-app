@@ -24,6 +24,8 @@ const DEFAULT_DB = {
     monthOffset: 0,
     selectedRate: 10,
     aiPersonality: 'coach',
+    aiProxyUrl: '/api/ai/messages',
+    aiProxyToken: '',
     riskAutoRule: { mode: 'warn_count', minSeverity: 'warn', minCount: 3 }
   }
 };
@@ -103,10 +105,10 @@ function getAssetTypeMeta(type) {
 const DB_KEY   = 'nobile_enc';   // encrypted data
 const SALT_KEY = 'nobile_salt';  // random salt (not secret)
 const HASH_KEY = 'nobile_phash'; // PIN verifier hash
-const GEMINI_API_KEY = 'AIzaSyAUc58_HnFJTnlRuyKzG87aWD0Qlmo8G6k';
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-const GEMINI_ENABLED = true;
+const AI_PROXY_URL_KEY = 'nobile_ai_proxy_url';
+const AI_PROXY_TOKEN_KEY = 'nobile_ai_proxy_token';
+const DEFAULT_AI_PROXY_URL = '';
+const DEFAULT_AI_PROXY_TOKEN = '';
 
 let _cryptoKey = null; // CryptoKey in memory for session
 
@@ -217,113 +219,65 @@ function validateImportedDB(data) {
 }
 
 function getAIProxyUrl() {
-  return '';
+  const fromSettings = DB?.settings?.aiProxyUrl;
+  const fromStorage = localStorage.getItem(AI_PROXY_URL_KEY);
+  const url = (fromSettings || fromStorage || DEFAULT_AI_PROXY_URL || '').trim();
+  return url || '';
 }
 
-function saveAIProxyUrl() {
+function saveAIProxyUrl(val) {
+  const next = (val || '').trim();
   if (!DB.settings) DB.settings = {};
-  delete DB.settings.aiProxyUrl;
-  try { localStorage.removeItem('nobile_ai_proxy_url'); } catch (e) {}
+  DB.settings.aiProxyUrl = next;
+  localStorage.setItem(AI_PROXY_URL_KEY, next);
   saveDB();
 }
 
 function getAIProxyToken() {
-  return '';
+  const fromSettings = DB?.settings?.aiProxyToken;
+  const fromStorage = localStorage.getItem(AI_PROXY_TOKEN_KEY);
+  return (fromSettings || fromStorage || DEFAULT_AI_PROXY_TOKEN || '').trim();
 }
 
-function saveAIProxyToken() {
+function saveAIProxyToken(val) {
+  const next = (val || '').trim();
   if (!DB.settings) DB.settings = {};
-  delete DB.settings.aiProxyToken;
-  try { localStorage.removeItem('nobile_ai_proxy_token'); } catch (e) {}
+  DB.settings.aiProxyToken = next;
+  localStorage.setItem(AI_PROXY_TOKEN_KEY, next);
   saveDB();
 }
 
 function loadAIProxyField() {
   const el = document.getElementById('set-ai-proxy-url');
-  if (el) el.value = '';
+  if (el) el.value = getAIProxyUrl();
 }
 
 function loadAIProxyTokenField() {
   const el = document.getElementById('set-ai-proxy-token');
-  if (el) el.value = '';
-}
-
-function normalizeAIMessageText(content) {
-  if (typeof content === 'string') return content.trim();
-  if (Array.isArray(content)) {
-    return content.map(part => {
-      if (typeof part === 'string') return part;
-      if (part && typeof part === 'object') return part.text || part.content || '';
-      return '';
-    }).join('\\n').trim();
-  }
-  if (content && typeof content === 'object') {
-    return (content.text || content.content || '').toString().trim();
-  }
-  return '';
-}
-
-function buildGeminiContents(messages) {
-  return (Array.isArray(messages) ? messages : [])
-    .filter(msg => msg && typeof msg === 'object')
-    .map(msg => {
-      const text = normalizeAIMessageText(msg.content);
-      if (!text) return null;
-      const role = msg.role === 'assistant' ? 'model' : 'user';
-      return { role, parts: [{ text }] };
-    })
-    .filter(Boolean);
+  if (el) el.value = getAIProxyToken();
 }
 
 async function callAI(payload) {
-  if (!GEMINI_ENABLED) throw new Error('Gemini не включён');
-
-  const contents = buildGeminiContents(payload?.messages || []);
-  if (!contents.length) throw new Error('Для запроса к Gemini нужны messages');
-
-  const body = {
-    contents,
-    generationConfig: {
-      maxOutputTokens: Number.isFinite(payload?.max_tokens)
-        ? Math.max(64, Math.min(4096, payload.max_tokens))
-        : 1024,
-    }
-  };
-
-  if (typeof payload?.system === 'string' && payload.system.trim()) {
-    body.systemInstruction = {
-      parts: [{ text: payload.system.trim() }]
-    };
-  }
-
-  const res = await fetch(GEMINI_API_URL, {
+  const endpoint = getAIProxyUrl();
+  const token = getAIProxyToken();
+  if (!endpoint) throw new Error('AI proxy не настроен');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['X-Proxy-Token'] = token;
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers,
+    body: JSON.stringify(payload)
   });
-
   let data = null;
   try { data = await res.json(); } catch (e) {}
-
   if (!res.ok) {
-    const message = data?.error?.message || data?.error || data?.message || `Gemini error (${res.status})`;
-    const quotaExceeded = res.status === 429 || /RESOURCE_EXHAUSTED|quota|billing/i.test(String(message));
-    if (quotaExceeded) {
-      throw new Error('Квота Google Gemini исчерпана или для ключа не подключён биллинг. Проверьте лимиты в Google AI Studio.');
-    }
+    const message = data?.error || data?.message || `AI proxy error (${res.status})`;
     throw new Error(message);
   }
-
   return data || {};
 }
 
 function extractAIText(data) {
-  const geminiText = data?.candidates
-    ?.flatMap(candidate => candidate?.content?.parts || [])
-    ?.map(part => part?.text || '')
-    ?.join('\\n')
-    ?.trim();
-  if (geminiText) return geminiText;
   return data?.content?.[0]?.text?.trim() || '';
 }
 

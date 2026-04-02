@@ -1033,7 +1033,7 @@ function renderGrowth() {
   if (!level) {
     profileEl.innerHTML = '<div class="empty"><div class="empty-s">Пройдите онбординг</div></div>';
   } else {
-    const doneHabitsToday = DB.habits.filter(h => h.completions?.[todayISO()]).length;
+    const doneHabitsToday = DB.habits.filter(h => h.completions?.[new Date().toISOString().split('T')[0]]).length;
     const topStreak = DB.habits.reduce((max,h) => Math.max(max, getHabitStreak(h)), 0);
     const txCount = DB.transactions.length;
     profileEl.innerHTML = `
@@ -3386,7 +3386,7 @@ let _alertThreshold = 85;
 
 function openSettings() {
   if (!DB.settings) DB.settings = {};
-  // AI работает из коробки — дополнительных полей нет
+  // Load AI proxy URL into field
   loadAIProxyField();
   loadAIProxyTokenField?.();
   updateAIProxyStatus();
@@ -3815,10 +3815,11 @@ function showAchievementPopup(ach) {
   iconEl.className = '';
   void iconEl.offsetWidth;
 
-  popup.style.display = 'block';
+  popup.style.display = 'flex';
   requestAnimationFrame(() => {
     bg.style.opacity = '1';
-    card.style.transform = 'translateX(-50%) translateY(0)';
+    card.style.opacity = '1';
+    card.style.transform = 'translate(-50%,-50%) scale(1)';
     setTimeout(() => {
       glowEl.style.opacity = '1';
       iconEl.className = 'ach-popup-icon-anim';
@@ -3837,7 +3838,7 @@ function showAchievementPopup(ach) {
     }, 120);
   });
 
-  if (navigator.vibrate) navigator.vibrate([40, 20, 80, 20, 120]);
+  if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([40, 20, 80, 20, 120]);
 }
 
 function _launchConfetti(container) {
@@ -3885,13 +3886,15 @@ function closeAchievementPopup() {
   const card = document.getElementById('ach-popup-card');
   const glow = document.getElementById('ach-popup-glow');
   bg.style.opacity = '0';
-  card.style.transform = 'translateX(-50%) translateY(110%)';
+  card.style.opacity = '0';
+  card.style.transform = 'translate(-50%,-50%) scale(.88)';
   glow.style.opacity = '0';
   setTimeout(() => {
     popup.style.display = 'none';
     card.style.transition = 'none';
-    card.style.transform = 'translateX(-50%) translateY(100%)';
-    setTimeout(() => { card.style.transition = 'transform .45s cubic-bezier(.22,.68,0,1.15)'; }, 50);
+    card.style.opacity = '0';
+    card.style.transform = 'translate(-50%,-50%) scale(.88)';
+    setTimeout(() => { card.style.transition = 'transform .32s cubic-bezier(.22,.68,0,1.15),opacity .24s ease'; }, 50);
     showNextAchievementPopup();
   }, 400);
 }
@@ -4787,7 +4790,12 @@ function renderSavings() {
   const stats  = calcStats();
   const recTotal = DB.recurringPayments.reduce((s,r)=>s+r.amount, 0);
   if (btnEl) {
-    if (stats.balance > 0) {
+    const latestIncome = [...getMonthTx()].filter(t => t.type === 'income').sort((a,b) => b.id - a.id)[0];
+    const lastAutopilotIncomeId = DB.settings?.autopilotLastAppliedIncomeId || null;
+    const autopilotHandledLatestIncome = !!(latestIncome && lastAutopilotIncomeId && latestIncome.id === lastAutopilotIncomeId);
+    if (autopilotHandledLatestIncome) {
+      btnEl.innerHTML = `<div style="padding:11px 12px;border-radius:12px;background:rgba(45,232,176,.08);border:1px solid rgba(45,232,176,.18);color:var(--mint);font-size:.76rem;font-weight:700;text-align:center">🤖 Последний доход уже распределён автопилотом</div>`;
+    } else if (stats.balance > 0) {
       btnEl.innerHTML = `<button onclick="openSheet('savings')" style="width:100%;background:rgba(45,232,176,.12);border:1px solid rgba(45,232,176,.22);color:var(--mint);font-family:var(--font-head);font-size:.82rem;font-weight:800;padding:11px;border-radius:12px;cursor:pointer;transition:all .2s">+ Перевести в накопления</button>`;
     } else {
       btnEl.innerHTML = '';
@@ -5129,19 +5137,13 @@ function checkAlerts() {
       });
     }
 
-    // Напоминание о накоплениях — не показывать если автопилот уже обработал доход этого месяца
-    const monthIncomeTxs = DB.transactions.filter(t => {
-      if (t.type !== 'income') return false;
-      const d = new Date(t.date);
-      return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
-    });
-    const allIncomeAutopiloted = monthIncomeTxs.length > 0 && monthIncomeTxs.every(t => t.apDone);
+    // Напоминание о накоплениях
     const monthlySavingsTotal = DB.savings.filter(s => {
       const d = new Date(s.date);
       return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
     }).reduce((s,e)=>s+e.amount, 0);
     const savingsTarget = Math.round(budget.savings.limit);
-    if (!allIncomeAutopiloted && canSave && savingsTarget > 0 && monthlySavingsTotal < savingsTarget * 0.5 && stats.income > 0) {
+    if (canSave && savingsTarget > 0 && monthlySavingsTotal < savingsTarget * 0.5 && stats.income > 0) {
       if (isNewbie) {
         alerts.push({
           type: 'gold', ico: '🏦',
@@ -5226,69 +5228,22 @@ function dismissAlert(i) {
   // Store all lottie instances
   const _lottieInstances = {};
 
-  function ensureLogoFallback(container) {
-    if (!container) return null;
-    let fallback = container.querySelector('.nobile-logo-fallback');
-    if (!fallback) {
-      fallback = document.createElement('img');
-      fallback.className = 'nobile-logo-fallback';
-      // Use high-quality animated PNG for splash, standard 512 for small header logos
-      const isSplash = container.classList.contains('splash-lottie') || container.id === 'splash-lottie-container';
-      fallback.src = isSplash ? './icons/nobile-logo-animated.png' : './icons/nobile-logo-512.png';
-      fallback.alt = 'Nobile';
-      fallback.loading = 'eager';
-      container.appendChild(fallback);
-    }
-    return fallback;
-  }
-
-  function showLogoFallback(container) {
-    if (!container) return;
-    ensureLogoFallback(container);
-    container.classList.remove('has-live-lottie');
-  }
-
-  function hideLogoFallback(container) {
-    if (!container) return;
-    container.classList.add('has-live-lottie');
-  }
-
   function createLottie(containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return null;
-
-    showLogoFallback(container);
-
     if (_lottieInstances[containerId]) {
-      try { _lottieInstances[containerId].destroy(); } catch (e) {}
-      delete _lottieInstances[containerId];
+      _lottieInstances[containerId].destroy();
     }
-
-    if (!_lottieData || typeof window.lottie === 'undefined' || !window.lottie?.loadAnimation) {
-      return null;
-    }
-
-    try {
-      const inst = window.lottie.loadAnimation({
-        container,
-        renderer: options.renderer || 'svg',
-        loop: options.loop !== undefined ? options.loop : true,
-        autoplay: options.autoplay !== undefined ? options.autoplay : true,
-        animationData: _lottieData,
-        rendererSettings: {
-          preserveAspectRatio: options.preserveAspectRatio || 'xMidYMid meet',
-          clearCanvas: true
-        }
-      });
-      _lottieInstances[containerId] = inst;
-      // Do NOT hide fallback — Lottie SVG/canvas sits on top (z-index:2) when working.
-      // If Lottie renders blank/transparent, fallback image remains visible underneath.
-      return inst;
-    } catch (e) {
-      console.warn('Lottie init failed for', containerId, e);
-      showLogoFallback(container);
-      return null;
-    }
+    const inst = lottie.loadAnimation({
+      container,
+      renderer: 'canvas',
+      loop: options.loop !== undefined ? options.loop : true,
+      autoplay: options.autoplay !== undefined ? options.autoplay : true,
+      animationData: _lottieData,
+      rendererSettings: { preserveAspectRatio: options.preserveAspectRatio || 'xMidYMid meet', clearCanvas: true }
+    });
+    _lottieInstances[containerId] = inst;
+    return inst;
   }
 
   // ── Header logo — loop with 5s pause ──
@@ -5437,9 +5392,10 @@ function dismissAlert(i) {
 ══════════════════════════════════════ */
 
 function updateAIProxyStatus() {
+  const endpoint = getAIProxyUrl();
   const dot = document.getElementById('ai-key-status');
   if (!dot) return;
-  dot.style.background = '#2DE8B0';
+  dot.style.background = endpoint ? '#2DE8B0' : 'var(--dim)';
 }
 
 // Совместимость с legacy inline-обработчиками

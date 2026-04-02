@@ -68,7 +68,13 @@ function saveTx() {
     _editTxId = null;
     showToast('✅ Операция обновлена');
   } else {
-    DB.transactions.push({ id: Date.now(), type: txTypeAtSave, amount, desc, category: cat, date });
+    const newTxId = Date.now();
+    DB.transactions.push({ id: newTxId, type: txTypeAtSave, amount, desc, category: cat, date });
+    if (txTypeAtSave === 'income') {
+      window._pendingAutopilotIncomeTxId = newTxId;
+      if (!DB.settings) DB.settings = {};
+      delete DB.settings.autopilotLastAppliedIncomeId;
+    }
     showToast(txTypeAtSave === 'income' ? '✅ Доход добавлен' : '✅ Расход добавлен');
   }
 
@@ -80,8 +86,7 @@ function saveTx() {
   document.getElementById('tx-desc').value = '';
 
   if (txTypeAtSave === 'income' && !wasEdit && typeof triggerAutopilot === 'function') {
-    const newTxId = DB.transactions[DB.transactions.length - 1]?.id;
-    setTimeout(() => triggerAutopilot(amount, newTxId), 250);
+    setTimeout(() => triggerAutopilot(amount), 250);
   }
 }
 
@@ -3066,7 +3071,7 @@ ${ctx}
     const reply = extractAIText(data) || 'Не удалось получить ответ.';
     _aiMessages[_aiMessages.length-1] = { role:'assistant', content:reply };
   } catch(e) {
-    _aiMessages[_aiMessages.length-1] = { role:'assistant', content:e?.message || 'Ошибка соединения. Проверьте интернет.' };
+    _aiMessages[_aiMessages.length-1] = { role:'assistant', content:'Ошибка соединения. Проверьте интернет.' };
   }
   renderChatMessages();
   renderQuickPrompts();
@@ -3238,7 +3243,7 @@ ${JSON.stringify(analysisData, null, 2)}
       }]
     });
     const analysis = extractAIText(data);
-    if (!analysis) throw new Error('Пустой ответ от Gemini');
+    if (!analysis) throw new Error('Пустой ответ от AI proxy');
 
     if (contentEl) {
       contentEl.textContent = '';
@@ -3263,7 +3268,7 @@ ${JSON.stringify(analysisData, null, 2)}
       icon.style.marginBottom = '10px';
       icon.textContent = '⚠️';
       const title = document.createElement('div');
-      title.textContent = 'Не удалось получить анализ. Проверьте подключение к Gemini.';
+      title.textContent = 'Не удалось получить анализ. Проверьте AI proxy.';
       const message = document.createElement('div');
       message.style.fontSize = '.7rem';
       message.style.marginTop = '10px';
@@ -4754,7 +4759,7 @@ function adaptSplits(amount, baseSplits) {
 // ── Current autopilot plan (for confirm) ──
 let _apPlan = null;
 
-function triggerAutopilot(amount, txId) {
+function triggerAutopilot(amount) {
   const ap = getAutopilotSettings();
   if (!ap.enabled) return;
 
@@ -4768,7 +4773,7 @@ function triggerAutopilot(amount, txId) {
     splits.life = Math.max(0, splits.life + diff);
   }
 
-  _apPlan = { amount, splits, adapted, reason, avg, ratio, txId };
+  _apPlan = { amount, splits, adapted, reason, avg, ratio };
   showAutopilotModal(_apPlan);
 }
 
@@ -4830,6 +4835,7 @@ function closeAutopilot() {
   const overlay = document.getElementById('ap-overlay');
   overlay.classList.remove('open');
   document.body.style.overflow = '';
+  window._pendingAutopilotIncomeTxId = null;
   _apPlan = null;
 }
 
@@ -4842,29 +4848,30 @@ function confirmAutopilot() {
   const { amount, splits } = _apPlan;
   const today = todayISO();
 
-  // Add savings entry
+  // Add savings entry and matching expense so free balance is reduced
+  const baseId = Date.now();
   const savingsAmt = Math.round(amount * splits.savings / 100);
   if (savingsAmt > 0) {
-    DB.savings.push({ id: Date.now(), amount: savingsAmt, note: '🤖 Автопилот — накопления', date: today });
+    DB.savings.push({ id: baseId, amount: savingsAmt, note: '🤖 Автопилот — накопления', date: today });
+    DB.transactions.push({ id: baseId + 1, type:'expense', amount: savingsAmt, desc:'🤖 Автопилот — накопления', category:'savings', date: today });
   }
 
-  // Add goal contribution entry
+  // Add goal contribution entry and matching expense so today screen does not re-suggest saving immediately
   const goalAmt = Math.round(amount * splits.goalContrib / 100);
   if (goalAmt > 0) {
     const g = DB.goals.find(g => g.saved < g.target);
+    DB.transactions.push({ id: baseId + 2, type:'expense', amount: goalAmt, desc: g ? `🤖 Автопилот → ${g.name}` : '🤖 Автопилот — взнос в цель', category:'savings', date: today });
     if (g) {
       g.saved = (g.saved || 0) + goalAmt;
       showToast(`📈 +${goalAmt.toLocaleString('ru')} ₽ → ${g.name}`);
     } else {
-      DB.savings.push({ id: Date.now()+1, amount: goalAmt, note: '🤖 Автопилот — взнос в цель', date: today });
+      DB.savings.push({ id: baseId + 3, amount: goalAmt, note: '🤖 Автопилот — взнос в цель', date: today });
     }
   }
 
-  // Mark source income transaction as autopilot-processed so alerts don't re-prompt for savings
-  if (_apPlan && _apPlan.txId) {
-    const srcTx = DB.transactions.find(t => t.id === _apPlan.txId);
-    if (srcTx) srcTx.apDone = true;
-  }
+  if (!DB.settings) DB.settings = {};
+  DB.settings.autopilotLastAppliedIncomeId = window._pendingAutopilotIncomeTxId || null;
+  window._pendingAutopilotIncomeTxId = null;
 
   saveDB();
   renderAll();
