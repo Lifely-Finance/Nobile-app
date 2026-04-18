@@ -368,9 +368,66 @@ function openRiskDialogFromBadge(e) {
 function updateRiskBadge(count) {
   const b = document.getElementById('hdr-risk-badge');
   if (!b) return;
-  if (!count || count<=0) { b.style.display='none'; return; }
-  b.style.display='flex';
-  b.textContent = count>9 ? '9+' : '!';
+  b.style.display = 'none';
+  b.setAttribute('aria-hidden', 'true');
+}
+
+function renderInlineRiskSummary(risks, aiTexts) {
+  const host = document.getElementById('predictive-risks-block');
+  if (!host) return;
+  if (!risks || risks.length === 0) {
+    host.innerHTML = '';
+    host.classList.remove('risk-inline-pulse');
+    return;
+  }
+
+  const critical = risks.filter(r => r.severity === 'critical').length;
+  const warn = risks.filter(r => r.severity === 'warn').length;
+  const info = risks.filter(r => r.severity === 'info').length;
+  const title = critical
+    ? `Есть ${critical} критич${critical === 1 ? 'ный риск' : 'ных риска'}`
+    : `Найдено ${risks.length} финансовых сигнал${risks.length === 1 ? '' : 'ов'}`;
+  const sub = critical
+    ? 'Блок закреплён внутри ленты дня и больше не перекрывает шапку или карточки.'
+    : warn
+      ? 'Nobile поднял наверх только важные сигналы и показал, что проверить прямо сейчас.'
+      : 'Система заметила несколько сигналов и собрала их в отдельный блок, не перекрывая интерфейс.';
+  const chips = [
+    critical ? `<span class="risk-inline-chip critical">🚨 ${critical} критич.</span>` : '',
+    warn ? `<span class="risk-inline-chip warn">⚠️ ${warn} предупрежд.</span>` : '',
+    info ? `<span class="risk-inline-chip info">💡 ${info} совет</span>` : ''
+  ].filter(Boolean).join('');
+  const preview = risks.slice(0, 2).map((r, i) => {
+    const txt = aiTexts && aiTexts[i] ? aiTexts[i] : '⏳ Nobile AI анализирует...';
+    return `
+      <div class="risk-inline-item risk-inline-item--${r.severity}">
+        <div class="risk-inline-item-ico">${r.ico}</div>
+        <div class="risk-inline-item-body">
+          <div class="risk-inline-item-title">${r.headline}</div>
+          <div class="risk-inline-item-text ${txt.includes('анализирует') ? 'loading' : ''}">${txt}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  host.innerHTML = `
+    <div class="risk-inline risk-inline--${critical ? 'critical' : warn ? 'warn' : 'info'}">
+      <div class="risk-inline-head">
+        <div class="risk-inline-meta">
+          <div class="risk-inline-ico">${critical ? '🚨' : warn ? '⚠️' : '🛡️'}</div>
+          <div style="min-width:0">
+            <div class="risk-inline-title">${title}</div>
+            <div class="risk-inline-sub">${sub}</div>
+          </div>
+        </div>
+        <div class="risk-inline-count">${risks.length} шт.</div>
+      </div>
+      ${chips ? `<div class="risk-inline-status">${chips}</div>` : ''}
+      <div class="risk-inline-preview">${preview}</div>
+      <div class="risk-inline-actions">
+        <button class="risk-inline-btn primary" onclick="openRiskDialog()">Открыть все риски</button>
+        <button class="risk-inline-btn" onclick="openRiskChat('${risks[0].id}')">Что делать сейчас?</button>
+      </div>
+    </div>`;
 }
 
 function renderRiskDialogContent(risks, aiTexts) {
@@ -425,6 +482,7 @@ function openRiskDialog() {
   if (a && av) av.textContent = a.textContent || 'НБ';
   renderRiskDialogContent(_lastRisks, _lastRiskTexts);
   ov.style.display = 'flex';
+  ov.scrollTop = 0;
 }
 
 function closeRiskDialog() {
@@ -3485,7 +3543,7 @@ function saveProfile() {
 function setSegActive(containerId, value) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.querySelectorAll('.sp-seg-btn').forEach(btn => {
+  container.querySelectorAll('.sp-seg-btn, .sett-seg-btn').forEach(btn => {
     const bval = btn.dataset.val;
     btn.classList.toggle('active', String(bval) === String(value));
   });

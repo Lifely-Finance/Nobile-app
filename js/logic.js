@@ -2560,18 +2560,15 @@ ${riskDescriptions}
 
 /* ── Отрисовка карточек рисков ── */
 function renderPredictiveRisks(risks, aiTexts) {
-  // compact mode: риски показываем через диалог из аватарки
-  const block = document.getElementById('predictive-risks-block');
-  if (block) block.innerHTML = '';
-
   const visible = (risks || []).filter(r => !_riskDismissed.has(r.id));
   _lastRisks = visible;
   _lastRiskTexts = aiTexts;
 
   updateRiskBadge(visible.length);
+  if (typeof renderInlineRiskSummary === 'function') renderInlineRiskSummary(visible, aiTexts);
   renderRiskDialogContent(visible, aiTexts);
 
-  // Автопоказ — по правилу пользователя (по умолчанию: warn+ и >=3 риска)
+  // Больше не открываем модалку автоматически: вместо этого мягко подсвечиваем новый блок в контенте.
   const rule = (DB.settings && DB.settings.riskAutoRule) ? DB.settings.riskAutoRule : { mode: 'warn_count', minSeverity: 'warn', minCount: 3 };
   const warnPlus = visible.filter(r => r.severity === 'warn' || r.severity === 'critical').length;
   const hasCritical = visible.some(r => r.severity === 'critical');
@@ -2583,47 +2580,61 @@ function renderPredictiveRisks(risks, aiTexts) {
     const minCount = Math.max(1, +rule.minCount || 3);
     shouldAuto = warnPlus >= minCount;
   } else {
-    // fallback
     shouldAuto = hasCritical;
   }
 
   if (!_riskAutoShown && shouldAuto && visible.length) {
     _riskAutoShown = true;
-    setTimeout(() => { try { openRiskDialog(); } catch(e) {} }, 450);
+    setTimeout(() => {
+      try {
+        const host = document.getElementById('predictive-risks-block');
+        if (host) {
+          host.classList.remove('risk-inline-pulse');
+          void host.offsetWidth;
+          host.classList.add('risk-inline-pulse');
+        }
+      } catch(e) {}
+    }, 260);
   }
 }
 
 
 /* ── Обновить текст конкретной карточки от ИИ ── */
 function updateRiskCardText(riskId, text) {
-  const el = document.getElementById('risk-text-' + riskId);
-  if (!el) return;
-  el.textContent = text;
-  el.classList.remove('loading');
+  const idx = (_lastRisks || []).findIndex(r => r.id === riskId);
+  if (idx !== -1) {
+    if (!Array.isArray(_lastRiskTexts)) _lastRiskTexts = [];
+    _lastRiskTexts[idx] = text;
+  }
+  ['risk-text-' + riskId, 'rdlg-text-' + riskId].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.remove('loading');
+  });
+  if (typeof renderInlineRiskSummary === 'function') renderInlineRiskSummary(_lastRisks, _lastRiskTexts);
+  if (typeof renderRiskDialogContent === 'function') renderRiskDialogContent(_lastRisks, _lastRiskTexts);
 }
 
 /* ── Закрыть карточку риска ── */
 function dismissRisk(id) {
   _riskDismissed.add(id);
-  /* patch: risk dialog badge */
   try {
-    _lastRisks = (_lastRisks||[]).filter(r => r.id !== id);
+    _lastRisks = (_lastRisks || []).filter(r => r.id !== id);
+    if (Array.isArray(_lastRiskTexts)) {
+      const idx = _lastRisks.findIndex(r => r.id === id);
+      if (idx >= 0) _lastRiskTexts.splice(idx, 1);
+    }
     updateRiskBadge(_lastRisks.length);
+    if (typeof renderInlineRiskSummary === 'function') renderInlineRiskSummary(_lastRisks, _lastRiskTexts);
     renderRiskDialogContent(_lastRisks, _lastRiskTexts);
   } catch(e) {}
-  const el = document.getElementById('rcard-' + id);
-  if (el) {
-    el.style.transition = 'all .28s ease';
-    el.style.opacity = '0';
-    el.style.transform = 'scale(.96) translateY(-4px)';
-    setTimeout(() => {
-      el.remove();
-      // Если блок пуст — скрываем
-      const block = document.getElementById('predictive-risks-block');
-      if (block && !block.querySelector('.risk-card')) {
-        block.innerHTML = '';
-      }
-    }, 300);
+  const dlgEl = document.getElementById('rdlg-' + id);
+  if (dlgEl) {
+    dlgEl.style.transition = 'all .22s ease';
+    dlgEl.style.opacity = '0';
+    dlgEl.style.transform = 'translateY(6px)';
+    setTimeout(() => dlgEl.remove(), 220);
   }
 }
 
